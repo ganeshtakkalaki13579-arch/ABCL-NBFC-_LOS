@@ -301,7 +301,7 @@ table.tbl tr{cursor:pointer}
 .modal{position:fixed;inset:0;z-index:62;display:none;align-items:center;justify-content:center;padding:24px}
 .modal.open{display:flex;animation:fade .2s}
 .modal-card{background:#fff;border-radius:var(--r-xl);width:min(560px,96vw);max-height:90vh;overflow:auto;box-shadow:var(--sh-l)}
-.modal-card.wide{width:min(820px,96vw)}
+.modal-card.wide{width:min(1080px,96vw)}
 .modal-h{padding:20px 24px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px}
 .modal-h h3{font-family:var(--display);font-weight:700;font-size:18px}
 .modal-h .x{margin-left:auto;width:34px;height:34px;border-radius:9px;display:grid;place-items:center;font-size:19px;color:var(--ink-3);background:var(--bg)}
@@ -551,6 +551,14 @@ table.tbl tr{cursor:pointer}
 .pie-leg .lg-nm{font-weight:600}
 .pie-leg .lg-v{margin-left:auto;font-family:var(--mono);color:var(--ink-3);font-weight:600}
 .bar-row{display:grid;grid-template-columns:130px 1fr 64px;align-items:center;gap:12px;margin-bottom:11px}
+.bar-row.drillable{border-radius:8px;padding:2px 6px;margin-left:-6px;margin-right:-6px;transition:background .12s}
+.bar-row.drillable:hover{background:rgba(190,30,45,.07)}
+.bar-row.drillable:hover .bar-fill{filter:brightness(1.14)}
+.pie-leg.drillable{border-radius:7px;padding:3px 5px;margin:-3px -5px;transition:background .12s}
+.pie-leg.drillable:hover{background:rgba(190,30,45,.07)}
+.pie-slice{transition:fill .12s}
+.chart-hint{font-size:11px;color:var(--ink-3);margin-top:10px;padding-top:9px;border-top:1px dashed var(--line-2);font-style:italic}
+.drill-scroll{max-height:70vh;overflow:auto;margin:-4px -2px 0}
 .bar-row .bnm{font-size:12.5px;font-weight:600;color:var(--ink-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .bar-track{height:22px;background:var(--bg-2);border-radius:7px;overflow:hidden}
 .bar-fill{height:100%;border-radius:7px;background:var(--sunrise);min-width:2px;transition:width .6s cubic-bezier(.2,.8,.2,1)}
@@ -826,6 +834,7 @@ table.tbl tr{cursor:pointer}
         <div class="page-actions">
           <button class="btn ghost" onclick="EXPORT.excel()"><span class="ic">⬇️</span> Download Excel Tracker</button>
           <button class="btn ghost" onclick="DECK.download('dashboard')"><span class="ic">📊</span> Download PPT</button>
+          <button class="btn ghost" onclick="DOCX.download('dashboard')"><span class="ic">📝</span> Download Word</button>
           <button class="btn primary" onclick="NAV.go('newcase')"><span class="ic">＋</span> New Case</button>
         </div>
       </div>
@@ -851,7 +860,8 @@ table.tbl tr{cursor:pointer}
         <div class="page-actions">
           <button class="btn ghost" onclick="EXPORT.excel()"><span class="ic">⬇️</span> Download Excel (.xlsx)</button>
           <button class="btn ghost" onclick="EXPORT.csv()"><span class="ic">📄</span> Download CSV</button>
-          <button class="btn primary" onclick="DECK.download('reports')"><span class="ic">📊</span> Download PPT (this view)</button>
+          <button class="btn ghost" onclick="DECK.download('reports')"><span class="ic">📊</span> PPT (this view)</button>
+          <button class="btn primary" onclick="DOCX.download('reports')"><span class="ic">📝</span> Word (this view)</button>
         </div>
       </div>
       <div class="banner info"><span class="bi">ℹ️</span><div>This report aggregates <b>all cases in the system</b> and includes the <b>TAT (Turn‑Around‑Time)</b> for every stage. The dashboard and table below update live with the filters — the PPT download reflects exactly what you've filtered.</div></div>
@@ -894,9 +904,15 @@ table.tbl tr{cursor:pointer}
     <section class="view" id="view-pipeline">
       <div class="page-head">
         <div><h2>Pipeline by Stage</h2><p>Click a stage header to see all its cases; click a card to open and advance it.</p></div>
-        <div class="page-actions"><button class="btn primary" onclick="NAV.go('newcase')"><span class="ic">＋</span> New Case</button></div>
+        <div class="page-actions">
+          <button class="btn ghost" onclick="EXPORT.excelSet(STATE.cases.filter(c=>['active','approved','disbursed'].includes(c.status)),'Active pipeline')"><span class="ic">⬇️</span> Excel</button>
+          <button class="btn ghost" onclick="DECK.download('pipeline')"><span class="ic">📊</span> PPT</button>
+          <button class="btn ghost" onclick="DOCX.download('pipeline')"><span class="ic">📝</span> Word</button>
+          <button class="btn primary" onclick="NAV.go('newcase')"><span class="ic">＋</span> New Case</button>
+        </div>
       </div>
       <div class="banner warn"><span class="bi">👆</span><div><b>How to work a case:</b> Click a <b>stage header</b> to view all cases sitting there in a focused list, or click any card to open it exactly where it is, fill the required details, then <b>Save &amp; move to the next stage</b>. Repeat until the case reaches <b>Completed</b>.</div></div>
+      <div id="pipeCharts"></div>
       <div class="pipe-wrap"><div class="pipe" id="pipeBoard"></div></div>
     </section>
 
@@ -1380,6 +1396,7 @@ const VIEW_META = {
 };
 const NAV = {
   go(view){
+    NAV._current=view;
     document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
     document.getElementById('view-'+view).classList.add('active');
     document.querySelectorAll('.nav a').forEach(a=>a.classList.toggle('active',a.dataset.view===view));
@@ -1398,6 +1415,7 @@ const NAV = {
     window.scrollTo(0,0);
   }
 };
+function currentViewId(){ return NAV._current||'dashboard'; }
 
 /* ---------------- SEARCH ---------------- */
 const SEARCH = {
@@ -2216,40 +2234,111 @@ const DASHVIZ = {
     return `<div class="kpi-grid">`+items.map(k=>`<div class="kpi"><div class="val">${k[0]}</div><div class="lab">${k[1]}</div></div>`).join('')+`</div>`;
   },
 
-  /* full charts block for a set of cases; clickableStages routes to pipeline drill-down */
+  /* full charts block for a set of cases.
+     opt.clickableStages -> stage bars open the pipeline stage list
+     opt.drill (default true) -> segments are clickable to open a sub-dashboard
+     opt.scope -> array of dims already drilled (prevents infinite nesting) */
   charts(cs, opt={}){
     const s=this.stats(cs);
     if(!cs.length) return `<div class="card" style="margin:14px 0"><div class="card-b"><div class="empty-state" style="padding:26px"><div class="es-ic">📊</div><p>No cases in this view yet.</p></div></div></div>`;
-    const stData=Object.keys(s.byStatus).map(k=>({label:k,value:s.byStatus[k]}));
-    const chData=Object.keys(s.byCh).map(k=>({label:k,value:s.byCh[k]})).sort((a,b)=>b.value-a.value);
-    const zoneRows=Object.keys(s.byZone).map(z=>({label:z,value:s.byZone[z],display:String(s.byZone[z])})).sort((a,b)=>b.value-a.value);
-    const convRows=Object.keys(s.chConv).map(k=>({label:k,value:s.chConv[k].pct,display:s.chConv[k].pct+'% ('+s.chConv[k].d+'/'+s.chConv[k].tot+')',cls:'green'})).sort((a,b)=>b.value-a.value);
-    /* stage bars (clickable) */
+    const drillOn = opt.drill!==false;
+    const scope = opt.scope||[];
+    const D = dim => (drillOn && scope.indexOf(dim)<0) ? {dim} : undefined;
+    const statusKey={'In‑progress':'active','Approved':'approved','Disbursed':'disbursed','Completed':'completed','Rejected':'rejected'};
+    const stData=Object.keys(s.byStatus).map(k=>({label:k,value:s.byStatus[k],key:statusKey[k]||k}));
+    const chData=Object.keys(s.byCh).map(k=>({label:k,value:s.byCh[k],key:k})).sort((a,b)=>b.value-a.value);
+    const zoneRows=Object.keys(s.byZone).map(z=>({label:z,value:s.byZone[z],display:String(s.byZone[z]),key:z})).sort((a,b)=>b.value-a.value);
+    const convRows=Object.keys(s.chConv).map(k=>({label:k,value:s.chConv[k].pct,display:s.chConv[k].pct+'% ('+s.chConv[k].d+'/'+s.chConv[k].tot+')',cls:'green',key:k})).sort((a,b)=>b.value-a.value);
+
+    /* stage bars — either open the pipeline stage list, or drill into that stage's cases */
     const maxStage=Math.max(1,...Object.values(s.stageCounts));
-    const stageBars = STAGES.map(st=>{
-      const v=s.stageCounts[st.n]||0; const pct=maxStage?Math.round(v/maxStage*100):0;
-      const click = opt.clickableStages ? ` style="cursor:pointer" onclick="PIPE.openStage(${st.n})" title="Click to see these cases"` : '';
-      return `<div class="bar-row"${click}><div class="bnm">${st.n}. ${esc(st.name)}</div>
-        <div class="bar-track"><div class="bar-fill" style="width:${v?Math.max(pct,5):0}%"></div></div>
-        <div class="bval">${v}</div></div>`;
-    }).join('');
+    const stageRows=STAGES.map(st=>({label:st.n+'. '+st.name, value:s.stageCounts[st.n]||0, display:String(s.stageCounts[st.n]||0), key:String(st.n)}));
+    let stageCard;
+    if(opt.clickableStages){
+      const stageBars = stageRows.map(r=>{
+        const n=r.key; const pct=maxStage?Math.round(r.value/maxStage*100):0;
+        return `<div class="bar-row drillable" style="cursor:pointer" onclick="PIPE.openStage(${n})" title="Click to see these cases"><div class="bnm">${esc(r.label)}</div>
+          <div class="bar-track"><div class="bar-fill" style="width:${r.value?Math.max(pct,5):0}%"></div></div>
+          <div class="bval">${r.value}</div></div>`;
+      }).join('');
+      stageCard=`<div class="card"><div class="card-h"><div><h3>Active cases by stage</h3><div class="sub">Click a bar to view the cases sitting there</div></div></div><div class="card-b">${stageBars}<div class="chart-hint">Numbers = active cases at each stage · click to list them</div></div></div>`;
+    } else {
+      stageCard=barCard('Active cases by stage','Cases sitting at each stage',stageRows,{drill:D('stage')});
+    }
+
     const amtRows=[
       {label:'Requested',value:toCr(s.reqAmt),display:inrCr(s.reqAmt)},
       {label:'Sanctioned',value:toCr(s.sanAmt),display:inrCr(s.sanAmt),cls:'green'},
       {label:'Disbursed',value:toCr(s.disAmt),display:inrCr(s.disAmt),cls:'green'},
     ];
-    return `<div class="an-grid">
-        ${pieCard('Case status mix','Where these cases currently stand',stData)}
-        ${pieCard('Sourcing channel mix','Share of cases by channel',chData)}
+    const convRate = s.total?Math.round(s.disbursed/s.total*100):0;
+    const explain = `<div class="card" style="margin-bottom:14px"><div class="card-b" style="font-size:12.5px;color:var(--ink-2);line-height:1.55">
+      <b>What this shows:</b> ${s.total} case(s) — ${s.active} in progress, ${s.disbursed} disbursed/completed (${convRate}% conversion), ${s.rejected} rejected.
+      Requested <b>${inrCr(s.reqAmt)}</b> → sanctioned <b>${inrCr(s.sanAmt)}</b> → disbursed <b>${inrCr(s.disAmt)}</b>. Avg. TAT/case <b>${s.avgTat!=null?fmtTAT(s.avgTat):'—'}</b>.
+      ${drillOn?'<span style="color:var(--ink-3)"> Hover a chart part to highlight it; click it to open a dashboard for just that segment.</span>':''}
+    </div></div>`;
+
+    return explain+`<div class="an-grid">
+        ${pieCard('Case status mix','Where these cases currently stand',stData, D('status'))}
+        ${pieCard('Sourcing channel mix','Share of cases by channel',chData, D('channel'))}
       </div>
       <div class="an-grid">
-        <div class="card"><div class="card-h"><div><h3>Active cases by stage</h3><div class="sub">${opt.clickableStages?'Click a bar to view the cases':'Cases sitting at each stage'}</div></div></div><div class="card-b">${stageBars}</div></div>
+        ${stageCard}
         ${barCard('Amount funnel','Requested → Sanctioned → Disbursed (₹ Cr)',amtRows)}
       </div>
       <div class="an-grid">
-        ${barCard('Disbursement rate by channel','Disbursed ÷ logged, per channel',convRows)}
-        ${barCard('Cases by zone','FLS zone distribution',zoneRows)}
+        ${barCard('Disbursement rate by channel','Disbursed ÷ logged, per channel',convRows,{drill:D('channel')})}
+        ${barCard('Cases by zone','FLS zone distribution',zoneRows,{drill:D('zone')})}
       </div>`;
+  }
+};
+
+/* ---------------- DRILL-DOWN (click a chart part -> its own dashboard) ---------------- */
+const DIM_LABEL={status:'Status',channel:'Channel',zone:'Zone',stage:'Stage'};
+function filterCasesBy(cs, dim, key){
+  if(dim==='status') return cs.filter(c=>c.status===key);
+  if(dim==='channel') return cs.filter(c=>CHANNEL_GROUP(caseChannel(c))===key);
+  if(dim==='zone') return cs.filter(c=>caseZone(c)===key);
+  if(dim==='stage'){ const n=Number(key); return cs.filter(c=>['active','approved','disbursed'].includes(c.status) && Math.min(c.currentStage,TOTAL_STAGES)===n); }
+  return cs;
+}
+const DRILL = {
+  _cs:[], _title:'',
+  open(dim, key, label){
+    /* base set = whatever the current view is showing */
+    const base = (currentViewId()==='reports' && REPORTS._filtered) ? REPORTS._filtered : STATE.cases;
+    const cs = filterCasesBy(base, dim, key);
+    const dimName = DIM_LABEL[dim]||dim;
+    const niceLabel = dim==='stage' ? ('Stage '+key+' · '+((STAGE_BY_N(Number(key))||{}).name||'')) : label;
+    this._cs=cs; this._title=dimName+': '+niceLabel;
+    const explain = this._explain(dim, key, niceLabel, cs, base.length);
+    const body = `<div class="drill-scroll">
+        ${explain}
+        ${DASHVIZ.kpis(DASHVIZ.stats(cs))}
+        ${DASHVIZ.charts(cs, {drill:true, scope:[dim]})}
+      </div>`;
+    UI.openModal(this._title+' — '+cs.length+' case(s)', body,
+      `<button class="btn ghost" onclick="UI.closeModal()">Close</button>
+       <button class="btn ghost" onclick="DECK.downloadSet(DRILL._cs, DRILL._title)"><span class="ic">📊</span> PPT</button>
+       <button class="btn ghost" onclick="DOCX.downloadSet(DRILL._cs, DRILL._title)"><span class="ic">📝</span> Word</button>
+       <button class="btn primary" onclick="EXPORT.excelSet(DRILL._cs, DRILL._title)"><span class="ic">⬇️</span> Excel</button>`,
+      true);
+  },
+  _explain(dim,key,label,cs,baseN){
+    const s=DASHVIZ.stats(cs);
+    const conv=s.total?Math.round(s.disbursed/s.total*100):0;
+    let lead='';
+    if(dim==='status'){
+      const meaning={active:'still moving through the pipeline',approved:'approved and awaiting disbursement',disbursed:'funds released to the customer',completed:'fully closed through NACH/ESCROW',rejected:'declined at some stage'}[key]||'';
+      lead=`These <b>${cs.length}</b> case(s) are <b>${esc(label)}</b> — ${meaning}. That is ${baseN?Math.round(cs.length/baseN*100):0}% of the ${baseN} case(s) in view.`;
+    } else if(dim==='channel'){
+      lead=`<b>${cs.length}</b> case(s) were sourced via <b>${esc(label)}</b> (${baseN?Math.round(cs.length/baseN*100):0}% of cases in view), with a ${conv}% disbursal conversion.`;
+    } else if(dim==='zone'){
+      lead=`<b>${cs.length}</b> case(s) belong to the <b>${esc(label)}</b> zone (${baseN?Math.round(cs.length/baseN*100):0}% of cases in view), ${conv}% disbursed/completed.`;
+    } else if(dim==='stage'){
+      lead=`<b>${cs.length}</b> active case(s) are currently sitting at <b>${esc(label)}</b>, carrying ${inrCr(s.reqAmt)} of requested value.`;
+    }
+    return `<div class="card" style="margin-bottom:14px"><div class="card-b" style="font-size:12.5px;color:var(--ink-2);line-height:1.55"><b>Insight:</b> ${lead} Requested ${inrCr(s.reqAmt)} · sanctioned ${inrCr(s.sanAmt)} · disbursed ${inrCr(s.disAmt)} · avg TAT ${s.avgTat!=null?fmtTAT(s.avgTat):'—'}.</div></div>`;
   }
 };
 
@@ -2372,6 +2461,10 @@ const REPORTS = {
 /* ---------------- PIPELINE ---------------- */
 const PIPE = {
   render(){
+    /* visual dashboard for the active pipeline */
+    const activeCs = STATE.cases.filter(c=>['active','approved','disbursed'].includes(c.status));
+    const pc=document.getElementById('pipeCharts');
+    if(pc) pc.innerHTML = DASHVIZ.charts(activeCs, {clickableStages:true, drill:true});
     const board=document.getElementById('pipeBoard');
     board.innerHTML = STAGES.map(s=>{
       const inStage = STATE.cases.filter(c=>(c.status==='active'||c.status==='approved'||c.status==='disbursed') && Math.min(c.currentStage,TOTAL_STAGES)===s.n);
@@ -2443,8 +2536,16 @@ const isDisbursed = c => c.status==='disbursed' || c.status==='completed' || (c.
 
 const PIE_COLORS = ['#BE1E2D','#F26522','#F8981D','#FBB315','#1f9d57','#1769aa','#7b39c9','#C77700','#8a767b','#28c840'];
 
-function pieSVG(data){
-  /* data: [{label,value}] -> returns {svg, legend[]} */
+/* lighten a hex color by mixing with white (amt 0..1) */
+function lighten(hex, amt){
+  hex=String(hex).replace('#',''); if(hex.length===3) hex=hex.split('').map(c=>c+c).join('');
+  const r=parseInt(hex.slice(0,2),16), g=parseInt(hex.slice(2,4),16), b=parseInt(hex.slice(4,6),16);
+  const m=v=>Math.round(v+(255-v)*amt);
+  return '#'+[m(r),m(g),m(b)].map(v=>v.toString(16).padStart(2,'0')).join('');
+}
+
+/* pieSVG(data, drill) — data:[{label,value,key}]; drill:{dim} makes slices clickable */
+function pieSVG(data, drill){
   const total=data.reduce((s,d)=>s+d.value,0);
   if(!total) return {svg:'<div style="color:var(--ink-3);font-size:13px">No data</div>',legend:[]};
   const cx=80,cy=80,r=72; let a0=-Math.PI/2; let paths='';
@@ -2452,31 +2553,46 @@ function pieSVG(data){
   data.forEach((d,i)=>{
     const frac=d.value/total, a1=a0+frac*2*Math.PI;
     const x0=cx+r*Math.cos(a0), y0=cy+r*Math.sin(a0), x1=cx+r*Math.cos(a1), y1=cy+r*Math.sin(a1);
-    const large=frac>0.5?1:0; const col=PIE_COLORS[i%PIE_COLORS.length];
-    if(data.length===1){ paths+=`<circle cx="${cx}" cy="${cy}" r="${r}" fill="${col}"/>`; }
-    else { paths+=`<path d="M${cx},${cy} L${x0.toFixed(2)},${y0.toFixed(2)} A${r},${r} 0 ${large} 1 ${x1.toFixed(2)},${y1.toFixed(2)} Z" fill="${col}"/>`; }
-    legend.push({label:d.label,value:d.value,pct:Math.round(frac*100),color:col});
+    const large=frac>0.5?1:0; const col=PIE_COLORS[i%PIE_COLORS.length]; const lit=lighten(col,0.28);
+    const key=d.key!=null?d.key:d.label;
+    const dz = drill&&drill.dim ? ` class="pie-slice" style="cursor:pointer" data-base="${col}" data-lit="${lit}" onmouseover="this.setAttribute('fill',this.dataset.lit)" onmouseout="this.setAttribute('fill',this.dataset.base)" onclick="DRILL.open('${esc(drill.dim)}','${esc(key)}','${esc(d.label)}')"><title>${esc(d.label)}: ${d.value} — click for insights</title>` : `>`;
+    if(data.length===1){
+      paths=`<circle cx="${cx}" cy="${cy}" r="${r}" fill="${col}"${drill&&drill.dim?` class="pie-slice" style="cursor:pointer" data-base="${col}" data-lit="${lit}" onmouseover="this.setAttribute('fill',this.dataset.lit)" onmouseout="this.setAttribute('fill',this.dataset.base)" onclick="DRILL.open('${esc(drill.dim)}','${esc(key)}','${esc(d.label)}')"`:''}/>`;
+    } else {
+      paths+=`<path d="M${cx},${cy} L${x0.toFixed(2)},${y0.toFixed(2)} A${r},${r} 0 ${large} 1 ${x1.toFixed(2)},${y1.toFixed(2)} Z" fill="${col}"${dz}`;
+      if(drill&&drill.dim) paths+=`</path>`; else paths+=``;
+    }
+    legend.push({label:d.label,value:d.value,pct:Math.round(frac*100),color:col,key});
     a0=a1;
   });
-  const svg=`<svg width="160" height="160" viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg">${paths}<circle cx="${cx}" cy="${cy}" r="40" fill="#fff"/><text x="${cx}" y="${cy-4}" text-anchor="middle" font-size="22" font-weight="800" font-family="Sora,sans-serif" fill="#241015">${total}</text><text x="${cx}" y="${cy+14}" text-anchor="middle" font-size="10" fill="#8a767b">total</text></svg>`;
-  return {svg,legend};
+  const svg=`<svg width="160" height="160" viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg">${paths}<circle cx="${cx}" cy="${cy}" r="40" fill="#fff" pointer-events="none"/><text x="${cx}" y="${cy-4}" text-anchor="middle" font-size="22" font-weight="800" font-family="Sora,sans-serif" fill="#241015" pointer-events="none">${total}</text><text x="${cx}" y="${cy+14}" text-anchor="middle" font-size="10" fill="#8a767b" pointer-events="none">total</text></svg>`;
+  return {svg,legend,drill};
 }
-function pieCard(title, sub, data){
-  const {svg,legend}=pieSVG(data);
+function pieCard(title, sub, data, drill){
+  const {svg,legend}=pieSVG(data, drill);
+  const leg=legend.map(l=>{
+    const dz = drill&&drill.dim ? ` class="pie-leg drillable" style="cursor:pointer" onclick="DRILL.open('${esc(drill.dim)}','${esc(l.key)}','${esc(l.label)}')"` : ` class="pie-leg"`;
+    return `<div${dz}><span class="sw" style="background:${l.color}"></span><span class="lg-nm">${esc(l.label)}</span><span class="lg-v">${l.value} · ${l.pct}%</span></div>`;
+  }).join('')||'<span style="color:var(--ink-3);font-size:13px">No data</span>';
+  const hint = drill&&drill.dim ? `<div class="chart-hint">Hover to highlight · click a segment for its dashboard</div>`:'';
   return `<div class="card"><div class="card-h"><div><h3>${esc(title)}</h3>${sub?`<div class="sub">${esc(sub)}</div>`:''}</div></div>
-    <div class="card-b"><div class="pie-wrap">${svg}
-      <div class="pie-legend">${legend.map(l=>`<div class="pie-leg"><span class="sw" style="background:${l.color}"></span><span class="lg-nm">${esc(l.label)}</span><span class="lg-v">${l.value} · ${l.pct}%</span></div>`).join('')||'<span style="color:var(--ink-3);font-size:13px">No data</span>'}</div>
-    </div></div></div>`;
+    <div class="card-b"><div class="pie-wrap">${svg}<div class="pie-legend">${leg}</div></div>${hint}</div></div>`;
 }
+/* barCard(title,sub,rows,opt) — rows:[{label,value,display,cls,key}]; opt.drill={dim} makes bars clickable */
 function barCard(title, sub, rows, opt={}){
   const max=Math.max(1,...rows.map(r=>r.value));
+  const drill=opt.drill;
   const body = rows.length ? rows.map(r=>{
     const pct=Math.round(r.value/max*100);
-    return `<div class="bar-row"><div class="bnm" title="${esc(r.label)}">${esc(r.label)}</div>
+    const base=r.cls==='green'?'#1f9d57':(r.cls==='red'?'#C92A38':'#BE1E2D');
+    const key=r.key!=null?r.key:r.label;
+    const dz = drill&&drill.dim ? ` class="bar-row drillable" style="cursor:pointer" data-lit="${lighten(base,0.3)}" onclick="DRILL.open('${esc(drill.dim)}','${esc(key)}','${esc(r.label)}')"` : ` class="bar-row"`;
+    return `<div${dz}><div class="bnm" title="${esc(r.label)}">${esc(r.label)}</div>
       <div class="bar-track"><div class="bar-fill ${r.cls||''}" style="width:${Math.max(pct, r.value?5:0)}%"></div></div>
       <div class="bval">${esc(r.display!=null?r.display:r.value)}</div></div>`;
   }).join('') : '<div style="color:var(--ink-3);font-size:13px">No data</div>';
-  return `<div class="card"><div class="card-h"><div><h3>${esc(title)}</h3>${sub?`<div class="sub">${esc(sub)}</div>`:''}</div></div><div class="card-b">${body}</div></div>`;
+  const hint = drill&&drill.dim ? `<div class="chart-hint">Hover to highlight · click a bar for its dashboard</div>`:'';
+  return `<div class="card"><div class="card-h"><div><h3>${esc(title)}</h3>${sub?`<div class="sub">${esc(sub)}</div>`:''}</div></div><div class="card-b">${body}${hint}</div></div>`;
 }
 
 const ANALYSIS = {
@@ -2694,22 +2810,25 @@ const EXPORT = {
   },
 
   /* build the two datasets */
-  _trackerRows(){
-    const header=['Case ID','Client','Business','Type','Industry','Zone','Sourcing Channel','Amount (₹)','Amount (₹ Cr)','Tenure (yrs)','Credit Rating','CIBIL','Current Stage','Status','Rejection Reason','Sanctioned Amt (₹)','Sourced By','Sourcer Role','Created','Committees','Total TAT (days)'];
+  _trackerRows(cases){
+    const list = cases||STATE.cases;
+    const header=['Case ID','Client','Business','Type','Industry','Zone','Sourcing Channel','Amount (₹)','Amount (₹ Cr)','Tenure (yrs)','Credit Rating','CIBIL','Current Stage','Status','Rejection Reason','Sanctioned Amt (₹)','Disbursed Amt (₹)','Sourced By','Sourcer Role','Created','Committees','Total TAT (days)'];
     /* per-stage TAT columns */
     STAGES.forEach(s=>header.push('S'+s.n+' '+s.name+' TAT (days)'));
     const rows=[header];
-    STATE.cases.forEach(c=>{
-      const sa=c.stageData[6]&&c.stageData[6].raw&&c.stageData[6].raw.sanctionedAmt;
-      const row=[c.caseId,c.clientName||'',c.businessName||'',c.clientType||'',c.industry||'',caseZone(c),CHANNEL_GROUP(caseChannel(c)),Number(c.amount)||0,+toCr(c.amount).toFixed(2),Number(c.tenure)||0,c.creditRating??'',c.cibil??'',caseStageLabel(c),c.status,(c.status==='rejected'?(c.rejectReason||''):''),Number(sa)||0,c.createdBy.name,c.createdBy.role,fmtDate(c.createdAt),(c.cc?c.cc.required.map(x=>CC_DEFS[x].name).join(' → '):''),tatDaysNum(caseTotalTAT(c))??''];
+    list.forEach(c=>{
+      const sa=(c.stageData[6]&&c.stageData[6].raw&&c.stageData[6].raw.sanctionedAmt)||c.sanctionedAmt;
+      const da=(c.stageData[9]&&c.stageData[9].raw&&c.stageData[9].raw.disbAmt)||c.disbursedAmt;
+      const row=[c.caseId,c.clientName||'',c.businessName||'',c.clientType||'',c.industry||'',caseZone(c),CHANNEL_GROUP(caseChannel(c)),Number(c.amount)||0,+toCr(c.amount).toFixed(2),Number(c.tenure)||0,c.creditRating??'',c.cibil??'',caseStageLabel(c),c.status,(c.status==='rejected'?(c.rejectReason||''):''),Number(sa)||0,Number(da)||0,c.createdBy.name,c.createdBy.role,fmtDate(c.createdAt),(c.cc?c.cc.required.map(x=>CC_DEFS[x].name).join(' → '):''),tatDaysNum(caseTotalTAT(c))??''];
       STAGES.forEach(s=>{ const t=c.stageTimes[s.n]; row.push(t&&t.in&&t.out?tatDaysNum(t.out-t.in):''); });
       rows.push(row);
     });
     return rows;
   },
-  _tatRows(){
+  _tatRows(cases){
+    const list = cases||STATE.cases;
     const rows=[['Case ID','Client','Stage No','Stage','Responsible','Entered','Completed','Duration (days)','Status']];
-    STATE.cases.forEach(c=>{
+    list.forEach(c=>{
       STAGES.forEach(s=>{
         const t=c.stageTimes[s.n]; if(!t) return;
         rows.push([c.caseId,c.clientName||c.businessName||'',s.n,s.name,s.team, t.in?fmtDateTime(t.in):'', t.out?fmtDateTime(t.out):'(in progress)', t.in&&t.out?tatDaysNum(t.out-t.in):'', t.out?'Done':'Pending']);
@@ -2717,33 +2836,47 @@ const EXPORT = {
     });
     return rows;
   },
-  _summaryRows(){
-    const rows=[['Aditya Birla Capital — LOS Report'],['Generated',fmtDateTime(now())],['Total cases',STATE.cases.length],[]];
+  _summaryRows(cases, label){
+    const list = cases||STATE.cases;
+    const rows=[['Aditya Birla Capital — LOS Report'],['Generated',fmtDateTime(now())]];
+    if(label) rows.push(['Scope',label]);
+    rows.push(['Total cases',list.length],[]);
     rows.push(['Stage','Responsible','Active cases here']);
     const counts={}; STAGES.forEach(s=>counts[s.n]=0);
-    STATE.cases.forEach(c=>{ if(['active','approved','disbursed'].includes(c.status)){ const n=Math.min(c.currentStage,TOTAL_STAGES); counts[n]++; } });
+    list.forEach(c=>{ if(['active','approved','disbursed'].includes(c.status)){ const n=Math.min(c.currentStage,TOTAL_STAGES); counts[n]++; } });
     STAGES.forEach(s=>rows.push([s.n+'. '+s.name,s.team,counts[s.n]]));
     return rows;
   },
 
-  excel(){
-    if(!STATE.cases.length){ TOAST.show('No data','Create a case before exporting.','err'); return; }
+  /* export a specific set of cases (used by Reports filter + drill-downs) */
+  excelSet(cases, label){
+    if(!cases||!cases.length){ TOAST.show('No data','Nothing in this selection to export.','err'); return; }
     try{
       const bytes=this._book([
-        {name:'Case Tracker', rows:this._trackerRows()},
-        {name:'Stage-wise TAT', rows:this._tatRows()},
-        {name:'Summary', rows:this._summaryRows()},
+        {name:'Case Tracker', rows:this._trackerRows(cases)},
+        {name:'Stage-wise TAT', rows:this._tatRows(cases)},
+        {name:'Summary', rows:this._summaryRows(cases,label)},
       ]);
-      this._download(bytes,'ABC-LOS-Tracker-'+new Date().toISOString().slice(0,10)+'.xlsx','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-      TOAST.show('Excel downloaded','Tracker + TAT + Summary sheets.','ok');
-    }catch(e){ TOAST.show('Export failed','Falling back to CSV.','err'); this.csv(); }
+      const tag=(label?('-'+label.replace(/[^a-zA-Z0-9]+/g,'_').slice(0,30)):'');
+      this._download(bytes,'ABC-LOS-Tracker'+tag+'-'+new Date().toISOString().slice(0,10)+'.xlsx','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      TOAST.show('Excel downloaded',cases.length+' case(s) · '+(label||'all')+'.','ok');
+    }catch(e){ TOAST.show('Export failed',e.message,'err'); }
+  },
+
+  excel(){
+    /* Reports tab respects the active filter; elsewhere exports all */
+    const set = (currentViewId()==='reports' && REPORTS._filtered) ? REPORTS._filtered : STATE.cases;
+    const label = (currentViewId()==='reports' && REPORTS._filterLabel) ? REPORTS._filterLabel : '';
+    if(!set.length){ TOAST.show('No data','Create a case before exporting.','err'); return; }
+    this.excelSet(set, label);
   },
   csv(){
-    if(!STATE.cases.length){ TOAST.show('No data','Create a case before exporting.','err'); return; }
-    const rows=this._trackerRows();
+    const set = (currentViewId()==='reports' && REPORTS._filtered) ? REPORTS._filtered : STATE.cases;
+    if(!set.length){ TOAST.show('No data','Create a case before exporting.','err'); return; }
+    const rows=this._trackerRows(set);
     const csv=rows.map(r=>r.map(v=>{ v=String(v==null?'':v); return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; }).join(',')).join('\n');
     this._download(this._str2bytes('\uFEFF'+csv),'ABC-LOS-Tracker-'+new Date().toISOString().slice(0,10)+'.csv','text/csv');
-    TOAST.show('CSV downloaded','Case tracker exported.','ok');
+    TOAST.show('CSV downloaded',set.length+' case(s) exported.','ok');
   }
 };
 
@@ -3345,16 +3478,20 @@ const DECK = {
   },
 
   download(mode){
-    const cs = (mode==='reports' && REPORTS._filtered) ? REPORTS._filtered : STATE.cases;
-    if(!cs.length){ TOAST.show('No data','Add or generate cases first.','err'); return; }
-    const caption = (mode==='reports')
-      ? ('Filtered view: '+(REPORTS._filterLabel||'All')+'  ·  '+cs.length+' cases  ·  '+fmtDateTime(now()))
-      : ('All cases  ·  '+cs.length+' cases  ·  '+fmtDateTime(now()));
+    let cs, label;
+    if(mode==='reports'){ cs=(REPORTS._filtered||STATE.cases); label='Filtered view: '+(REPORTS._filterLabel||'All'); }
+    else if(mode==='pipeline'){ cs=STATE.cases.filter(c=>['active','approved','disbursed'].includes(c.status)); label='Active pipeline'; }
+    else { cs=STATE.cases; label='All cases'; }
+    this.downloadSet(cs, label);
+  },
+  downloadSet(cs, label){
+    if(!cs||!cs.length){ TOAST.show('No data','Nothing in this selection.','err'); return; }
+    const caption=(label||'All cases')+'  ·  '+cs.length+' cases  ·  '+fmtDateTime(now());
     try{
       const slides=this._slides(cs, caption);
       const bytes=this._build(slides);
-      const name=(mode==='reports'?'ABC-LOS-Report-Dashboard-':'ABC-LOS-Dashboard-')+new Date().toISOString().slice(0,10)+'.pptx';
-      EXPORT._download(bytes, name, 'application/vnd.openxmlformats-officedocument.presentationml.presentation');
+      const tag=label?('-'+label.replace(/[^a-zA-Z0-9]+/g,'_').slice(0,30)):'';
+      EXPORT._download(bytes, 'ABC-LOS-Dashboard'+tag+'-'+new Date().toISOString().slice(0,10)+'.pptx', 'application/vnd.openxmlformats-officedocument.presentationml.presentation');
       TOAST.show('PPT downloaded', slides.length+' slides · '+cs.length+' cases.','ok');
     }catch(e){ TOAST.show('PPT failed', e.message,'err'); }
   },
@@ -3389,6 +3526,104 @@ const DECK = {
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="${rel}/slideLayout" Target="../slideLayouts/slideLayout1.xml"/></Relationships>`});
     });
     return EXPORT._zip(files);
+  }
+};
+
+/* ============================================================
+   DOCX — offline Word (.docx) report generator for any case set
+   ============================================================ */
+const DOCX = {
+  _e(s){ return EXPORT._esc(s); },
+  RED:'C00000', GREEN:'1E7E34', GREY:'8A767B', INK:'241015', LINE:'ECDFE0',
+  /* a run of text */
+  run(t,o={}){ return `<w:r><w:rPr>${o.b?'<w:b/>':''}${o.color?`<w:color w:val="${o.color}"/>`:''}${o.sz?`<w:sz w:val="${o.sz*2}"/><w:szCs w:val="${o.sz*2}"/>`:''}<w:rFonts w:ascii="Arial" w:hAnsi="Arial"/></w:rPr><w:t xml:space="preserve">${this._e(t)}</w:t></w:r>`; },
+  para(runs,o={}){ const align=o.align?`<w:jc w:val="${o.align}"/>`:''; const sh=o.shade?`<w:shd w:val="clear" w:fill="${o.shade}"/>`:''; const sp=o.space?`<w:spacing w:before="${o.space}" w:after="${o.space}"/>`:''; return `<w:p><w:pPr>${align}${sh}${sp}</w:pPr>${(Array.isArray(runs)?runs:[runs]).join('')}</w:p>`; },
+  heading(t){ return this.para([this.run(t,{b:true,sz:15,color:this.RED})],{space:120}); },
+  /* simple table: head[], rows[[...]] */
+  table(head, rows){
+    const border=`<w:tblBorders><w:top w:val="single" w:sz="4" w:color="${this.LINE}"/><w:bottom w:val="single" w:sz="4" w:color="${this.LINE}"/><w:left w:val="single" w:sz="4" w:color="${this.LINE}"/><w:right w:val="single" w:sz="4" w:color="${this.LINE}"/><w:insideH w:val="single" w:sz="4" w:color="${this.LINE}"/><w:insideV w:val="single" w:sz="4" w:color="${this.LINE}"/></w:tblBorders>`;
+    const hr=`<w:tr>${head.map(h=>`<w:tc><w:tcPr><w:shd w:val="clear" w:fill="${this.RED}"/></w:tcPr>${this.para([this.run(h,{b:true,sz:9,color:'FFFFFF'})])}</w:tc>`).join('')}</w:tr>`;
+    const br=rows.map((r,ri)=>`<w:tr>${r.map(c=>`<w:tc><w:tcPr>${ri%2?`<w:shd w:val="clear" w:fill="FBEDED"/>`:''}</w:tcPr>${this.para([this.run(String(c),{sz:9})])}</w:tc>`).join('')}</w:tr>`).join('');
+    return `<w:tbl><w:tblPr><w:tblW w:w="5000" w:type="pct"/>${border}</w:tblPr>${hr}${br}</w:tbl>`+this.para([this.run('')]);
+  },
+  /* bar rendered as a shaded table cell of proportional width */
+  barRows(rows){
+    const max=Math.max(1,...rows.map(r=>r.value||0));
+    return rows.map(r=>{
+      const pct=Math.round((r.value/max)*100);
+      const fill=r.cls==='green'?this.GREEN:this.RED;
+      return `<w:tbl><w:tblPr><w:tblW w:w="5000" w:type="pct"/><w:tblLayout w:type="fixed"/></w:tblPr>`+
+        `<w:tr>`+
+        `<w:tc><w:tcPr><w:tcW w:w="1500" w:type="pct"/></w:tcPr>${this.para([this.run(r.label,{sz:9})])}</w:tc>`+
+        `<w:tc><w:tcPr><w:tcW w:w="${Math.max(pct*33,30)}" w:type="dxa"/><w:shd w:val="clear" w:fill="${fill}"/></w:tcPr>${this.para([this.run(' ',{sz:6})])}</w:tc>`+
+        `<w:tc><w:tcPr><w:tcW w:w="1200" w:type="pct"/></w:tcPr>${this.para([this.run(String(r.display!=null?r.display:r.value),{sz:9,b:true})])}</w:tc>`+
+        `</w:tr></w:tbl>`;
+    }).join('');
+  },
+
+  _body(cs, label){
+    const s=DASHVIZ.stats(cs);
+    const conv=s.total?Math.round(s.disbursed/s.total*100):0;
+    let x='';
+    /* title */
+    x+=this.para([this.run('Aditya Birla Capital — LOS Dashboard Report',{b:true,sz:20,color:this.RED})]);
+    x+=this.para([this.run((label||'All cases')+'  ·  '+cs.length+' cases  ·  '+fmtDateTime(now()),{sz:10,color:this.GREY})],{space:80});
+    /* KPIs as a table */
+    x+=this.heading('Key metrics');
+    x+=this.table(['Metric','Value'],[
+      ['Total cases',s.total],['In progress',s.active],['Disbursed / completed',s.disbursed],['Rejected',s.rejected],
+      ['Total requested',inrCr(s.reqAmt)],['Total sanctioned',inrCr(s.sanAmt)],['Total disbursed',inrCr(s.disAmt)],
+      ['Disbursal conversion',conv+'%'],['Avg. TAT / case',s.avgTat!=null?fmtTAT(s.avgTat):'—']
+    ]);
+    /* explanation */
+    x+=this.para([this.run('What this shows: ',{b:true,sz:10}),this.run(`${s.total} case(s) — ${s.active} in progress, ${s.disbursed} disbursed/completed (${conv}% conversion), ${s.rejected} rejected. Requested ${inrCr(s.reqAmt)} flowed to ${inrCr(s.sanAmt)} sanctioned and ${inrCr(s.disAmt)} disbursed.`,{sz:10,color:this.INK})],{space:80});
+    /* status mix */
+    x+=this.heading('Case status mix');
+    x+=this.barRows(Object.keys(s.byStatus).map(k=>({label:k,value:s.byStatus[k],display:s.byStatus[k]})));
+    /* stage distribution */
+    x+=this.heading('Active cases by stage');
+    x+=this.barRows(STAGES.map(st=>({label:st.n+'. '+st.name,value:s.stageCounts[st.n]||0,display:s.stageCounts[st.n]||0})));
+    /* channel mix */
+    x+=this.heading('Sourcing channel mix');
+    x+=this.barRows(Object.keys(s.byCh).sort((a,b)=>s.byCh[b]-s.byCh[a]).map(k=>({label:k,value:s.byCh[k],display:s.byCh[k]})));
+    /* zone */
+    x+=this.heading('Cases by zone');
+    x+=this.barRows(Object.keys(s.byZone).sort((a,b)=>s.byZone[b]-s.byZone[a]).map(z=>({label:z,value:s.byZone[z],display:s.byZone[z]})));
+    /* recent cases table */
+    x+=this.heading('Recent cases');
+    const recent=cs.slice().sort((a,b)=>b.createdAt-a.createdAt).slice(0,15).map(c=>{
+      const sa=(c.stageData[6]&&c.stageData[6].raw&&c.stageData[6].raw.sanctionedAmt)||c.sanctionedAmt;
+      return [c.caseId,(c.clientName||c.businessName||'—'),inrCr(c.amount),sa?inrCr(sa):'—',caseStageLabel(c),c.status];
+    });
+    x+=this.table(['Case ID','Client','Requested','Sanctioned','Stage','Status'],recent);
+    return x;
+  },
+
+  downloadSet(cs, label){
+    if(!cs||!cs.length){ TOAST.show('No data','Nothing in this selection.','err'); return; }
+    try{
+      const body=this._body(cs,label);
+      const doc=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${body}<w:sectPr><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="720" w:right="720" w:bottom="720" w:left="720"/></w:sectPr></w:body></w:document>`;
+      const files=[
+        {name:'[Content_Types].xml', str:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>`},
+        {name:'_rels/.rels', str:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>`},
+        {name:'word/document.xml', str:doc}
+      ];
+      const bytes=EXPORT._zip(files);
+      const tag=label?('-'+label.replace(/[^a-zA-Z0-9]+/g,'_').slice(0,30)):'';
+      EXPORT._download(bytes,'ABC-LOS-Report'+tag+'-'+new Date().toISOString().slice(0,10)+'.docx','application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+      TOAST.show('Word downloaded',cs.length+' case(s) · '+(label||'all')+'.','ok');
+    }catch(e){ TOAST.show('Word failed',e.message,'err'); }
+  },
+  download(mode){
+    let cs,label;
+    if(mode==='reports'){ cs=(REPORTS._filtered||STATE.cases); label='Filtered view: '+(REPORTS._filterLabel||'All'); }
+    else if(mode==='pipeline'){ cs=STATE.cases.filter(c=>['active','approved','disbursed'].includes(c.status)); label='Active pipeline'; }
+    else { cs=STATE.cases; label='All cases'; }
+    this.downloadSet(cs,label);
   }
 };
 
