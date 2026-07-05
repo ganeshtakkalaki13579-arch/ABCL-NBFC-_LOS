@@ -825,13 +825,15 @@ table.tbl tr{cursor:pointer}
         <div><h2 id="dashHello">Good day</h2><p>Live snapshot of every loan case across the 11‑stage pipeline.</p></div>
         <div class="page-actions">
           <button class="btn ghost" onclick="EXPORT.excel()"><span class="ic">⬇️</span> Download Excel Tracker</button>
+          <button class="btn ghost" onclick="DECK.download('dashboard')"><span class="ic">📊</span> Download PPT</button>
           <button class="btn primary" onclick="NAV.go('newcase')"><span class="ic">＋</span> New Case</button>
         </div>
       </div>
       <div class="kpi-grid" id="kpiGrid"></div>
+      <div id="dashCharts"></div>
       <div class="grid-2">
         <div class="card">
-          <div class="card-h"><div><h3>Pipeline by Stage</h3><div class="sub">Number of active cases currently sitting at each stage</div></div>
+          <div class="card-h"><div><h3>Pipeline by Stage</h3><div class="sub">Click a stage to see the cases sitting there</div></div>
             <button class="btn ghost sm" onclick="NAV.go('pipeline')">Open pipeline →</button></div>
           <div class="card-b"><div class="funnel" id="dashFunnel"></div></div>
         </div>
@@ -849,9 +851,10 @@ table.tbl tr{cursor:pointer}
         <div class="page-actions">
           <button class="btn ghost" onclick="EXPORT.excel()"><span class="ic">⬇️</span> Download Excel (.xlsx)</button>
           <button class="btn ghost" onclick="EXPORT.csv()"><span class="ic">📄</span> Download CSV</button>
+          <button class="btn primary" onclick="DECK.download('reports')"><span class="ic">📊</span> Download PPT (this view)</button>
         </div>
       </div>
-      <div class="banner info"><span class="bi">ℹ️</span><div>This report aggregates <b>all cases in the system</b> and includes the <b>TAT (Turn‑Around‑Time)</b> for every stage. Use the download button to export the full tracker to Excel.</div></div>
+      <div class="banner info"><span class="bi">ℹ️</span><div>This report aggregates <b>all cases in the system</b> and includes the <b>TAT (Turn‑Around‑Time)</b> for every stage. The dashboard and table below update live with the filters — the PPT download reflects exactly what you've filtered.</div></div>
       <div class="toolbar">
         <select id="fltStage" onchange="REPORTS.render()"><option value="">All stages</option></select>
         <select id="fltStatus" onchange="REPORTS.render()">
@@ -864,6 +867,7 @@ table.tbl tr{cursor:pointer}
         <div class="grow"></div>
         <span id="reportCount" style="font-size:12.5px;color:var(--ink-3)"></span>
       </div>
+      <div id="reportCharts"></div>
       <div class="card"><div class="tbl-wrap"><table class="tbl" id="reportsTable"></table></div>
         <div id="reportsEmpty" class="empty-state hidden"><div class="es-ic">📭</div><h3>No cases match</h3><p>Adjust the filters or create a new case to get started.</p></div>
       </div>
@@ -889,10 +893,10 @@ table.tbl tr{cursor:pointer}
     <!-- ===== PIPELINE ===== -->
     <section class="view" id="view-pipeline">
       <div class="page-head">
-        <div><h2>Pipeline by Stage</h2><p>Click any case card to open it and advance it to the next stage.</p></div>
+        <div><h2>Pipeline by Stage</h2><p>Click a stage header to see all its cases; click a card to open and advance it.</p></div>
         <div class="page-actions"><button class="btn primary" onclick="NAV.go('newcase')"><span class="ic">＋</span> New Case</button></div>
       </div>
-      <div class="banner warn"><span class="bi">👆</span><div><b>How to work a case:</b> Click a card (e.g. one sitting in the <span class="chip cc">Credit Committee</span> stage) to open it exactly where it is, fill the required details, then <b>Save & move to the next stage</b>. Repeat until the case reaches <b>Completed</b>.</div></div>
+      <div class="banner warn"><span class="bi">👆</span><div><b>How to work a case:</b> Click a <b>stage header</b> to view all cases sitting there in a focused list, or click any card to open it exactly where it is, fill the required details, then <b>Save &amp; move to the next stage</b>. Repeat until the case reaches <b>Completed</b>.</div></div>
       <div class="pipe-wrap"><div class="pipe" id="pipeBoard"></div></div>
     </section>
 
@@ -2171,6 +2175,84 @@ function statusChipHTML(c){
 }
 
 /* ---------------- DASHBOARD ---------------- */
+/* ---------------- SHARED VISUAL DASHBOARD ----------------
+   Computes summary stats for ANY set of cases and renders charts.
+   Used by Dashboard (all cases), Reports (filtered set) and the PPT deck. */
+const DASHVIZ = {
+  stats(cs){
+    const money=(c,k)=>{ const raw=c.stageData[k]&&c.stageData[k].raw; const v=(raw&&raw[k===6?'sanctionedAmt':'disbAmt'])||(k===6?c.sanctionedAmt:c.disbursedAmt); return Number(v)||0; };
+    const total=cs.length;
+    const active=cs.filter(c=>c.status==='active'||c.status==='approved').length;
+    const disbursed=cs.filter(c=>c.status==='disbursed'||c.status==='completed').length;
+    const completed=cs.filter(c=>c.status==='completed').length;
+    const rejected=cs.filter(c=>c.status==='rejected').length;
+    const reqAmt=cs.reduce((s,c)=>s+(Number(c.amount)||0),0);
+    const sanAmt=cs.reduce((s,c)=>s+money(c,6),0);
+    const disAmt=cs.reduce((s,c)=>s+money(c,9),0);
+    const tats=cs.map(caseTotalTAT).filter(x=>x!=null);
+    const avgTat=tats.length?tats.reduce((a,b)=>a+b,0)/tats.length:null;
+    /* stage distribution (active pipeline) */
+    const stageCounts={}; STAGES.forEach(s=>stageCounts[s.n]=0);
+    cs.forEach(c=>{ if(['active','approved','disbursed'].includes(c.status)){ stageCounts[Math.min(c.currentStage,TOTAL_STAGES)]++; } });
+    /* status mix */
+    const stLabels={active:'In‑progress',approved:'Approved',disbursed:'Disbursed',completed:'Completed',rejected:'Rejected'};
+    const byStatus={}; cs.forEach(c=>{const l=stLabels[c.status]||c.status; byStatus[l]=(byStatus[l]||0)+1;});
+    /* channel mix */
+    const byCh={}; cs.forEach(c=>{const g=CHANNEL_GROUP(caseChannel(c)); byCh[g]=(byCh[g]||0)+1;});
+    /* zone */
+    const byZone={}; cs.forEach(c=>{const z=caseZone(c); byZone[z]=(byZone[z]||0)+1;});
+    /* disbursal rate by channel */
+    const chConv={}; Object.keys(byCh).forEach(k=>{ const d=cs.filter(c=>CHANNEL_GROUP(caseChannel(c))===k && isDisbursed(c)).length; chConv[k]={pct:byCh[k]?Math.round(d/byCh[k]*100):0,d,tot:byCh[k]}; });
+    return {total,active,disbursed,completed,rejected,reqAmt,sanAmt,disAmt,avgTat,stageCounts,byStatus,byCh,byZone,chConv};
+  },
+
+  /* render KPI chips into a container */
+  kpis(s){
+    const items=[
+      [s.total,'Total cases'],[s.active,'In progress'],[s.disbursed,'Disbursed / completed'],
+      [s.rejected,'Rejected'],[inrCr(s.reqAmt),'Total requested'],[inrCr(s.sanAmt),'Total sanctioned'],
+      [inrCr(s.disAmt),'Total disbursed'],[s.avgTat!=null?fmtTAT(s.avgTat):'—','Avg. TAT / case']
+    ];
+    return `<div class="kpi-grid">`+items.map(k=>`<div class="kpi"><div class="val">${k[0]}</div><div class="lab">${k[1]}</div></div>`).join('')+`</div>`;
+  },
+
+  /* full charts block for a set of cases; clickableStages routes to pipeline drill-down */
+  charts(cs, opt={}){
+    const s=this.stats(cs);
+    if(!cs.length) return `<div class="card" style="margin:14px 0"><div class="card-b"><div class="empty-state" style="padding:26px"><div class="es-ic">📊</div><p>No cases in this view yet.</p></div></div></div>`;
+    const stData=Object.keys(s.byStatus).map(k=>({label:k,value:s.byStatus[k]}));
+    const chData=Object.keys(s.byCh).map(k=>({label:k,value:s.byCh[k]})).sort((a,b)=>b.value-a.value);
+    const zoneRows=Object.keys(s.byZone).map(z=>({label:z,value:s.byZone[z],display:String(s.byZone[z])})).sort((a,b)=>b.value-a.value);
+    const convRows=Object.keys(s.chConv).map(k=>({label:k,value:s.chConv[k].pct,display:s.chConv[k].pct+'% ('+s.chConv[k].d+'/'+s.chConv[k].tot+')',cls:'green'})).sort((a,b)=>b.value-a.value);
+    /* stage bars (clickable) */
+    const maxStage=Math.max(1,...Object.values(s.stageCounts));
+    const stageBars = STAGES.map(st=>{
+      const v=s.stageCounts[st.n]||0; const pct=maxStage?Math.round(v/maxStage*100):0;
+      const click = opt.clickableStages ? ` style="cursor:pointer" onclick="PIPE.openStage(${st.n})" title="Click to see these cases"` : '';
+      return `<div class="bar-row"${click}><div class="bnm">${st.n}. ${esc(st.name)}</div>
+        <div class="bar-track"><div class="bar-fill" style="width:${v?Math.max(pct,5):0}%"></div></div>
+        <div class="bval">${v}</div></div>`;
+    }).join('');
+    const amtRows=[
+      {label:'Requested',value:toCr(s.reqAmt),display:inrCr(s.reqAmt)},
+      {label:'Sanctioned',value:toCr(s.sanAmt),display:inrCr(s.sanAmt),cls:'green'},
+      {label:'Disbursed',value:toCr(s.disAmt),display:inrCr(s.disAmt),cls:'green'},
+    ];
+    return `<div class="an-grid">
+        ${pieCard('Case status mix','Where these cases currently stand',stData)}
+        ${pieCard('Sourcing channel mix','Share of cases by channel',chData)}
+      </div>
+      <div class="an-grid">
+        <div class="card"><div class="card-h"><div><h3>Active cases by stage</h3><div class="sub">${opt.clickableStages?'Click a bar to view the cases':'Cases sitting at each stage'}</div></div></div><div class="card-b">${stageBars}</div></div>
+        ${barCard('Amount funnel','Requested → Sanctioned → Disbursed (₹ Cr)',amtRows)}
+      </div>
+      <div class="an-grid">
+        ${barCard('Disbursement rate by channel','Disbursed ÷ logged, per channel',convRows)}
+        ${barCard('Cases by zone','FLS zone distribution',zoneRows)}
+      </div>`;
+  }
+};
+
 const DASH = {
   render(){
     if(!STATE.user) return;
@@ -2199,13 +2281,16 @@ const DASH = {
     document.getElementById('kpiGrid').innerHTML = kpis.map(k=>
       `<div class="kpi"><div class="val">${k.val}</div><div class="lab">${k.lab}</div></div>`).join('');
 
+    /* visual dashboard (charts) */
+    document.getElementById('dashCharts').innerHTML = DASHVIZ.charts(cs, {clickableStages:true});
+
     /* funnel */
     const counts={}; STAGES.forEach(s=>counts[s.n]=0);
     cs.forEach(c=>{ if(c.status==='active'||c.status==='approved'||c.status==='disbursed'){ const n=Math.min(c.currentStage,TOTAL_STAGES); counts[n]=(counts[n]||0)+1; } });
     const max=Math.max(1,...Object.values(counts));
     document.getElementById('dashFunnel').innerHTML = STAGES.map(s=>{
       const v=counts[s.n]||0; const pct=Math.round(v/max*100);
-      return `<div class="fbar"><div class="nm">${s.n}. ${esc(s.name)}<small>${esc(s.team)}</small></div>
+      return `<div class="fbar" style="cursor:pointer" onclick="PIPE.openStage(${s.n})" title="Click to see these cases"><div class="nm">${s.n}. ${esc(s.name)}<small>${esc(s.team)}</small></div>
         <div class="track"><div class="fill" style="width:${v?Math.max(pct,8):0}%">${v||''}</div></div>
         <div class="cnt">${v}</div></div>`;
     }).join('');
@@ -2247,6 +2332,16 @@ const REPORTS = {
     });
 
     document.getElementById('reportCount').textContent = rows.length+' of '+STATE.cases.length+' cases';
+    REPORTS._filtered = rows;   /* used by PPT download */
+    REPORTS._filterLabel = [
+      fStage?(fStage==='done'?'Completed':('Stage '+fStage+' · '+((STAGES.find(s=>String(s.n)===String(fStage))||{}).name||''))):'All stages',
+      fStatus?({active:'In‑progress',approved:'Approved',rejected:'Rejected',disbursed:'Disbursed',completed:'Completed'}[fStatus]||fStatus):'All statuses',
+      fOwner||'All sourcers'
+    ].join(' · ')+(q?(' · “'+q+'”'):'');
+
+    /* filtered visual dashboard */
+    document.getElementById('reportCharts').innerHTML = DASHVIZ.charts(rows, {clickableStages:false});
+
     const tbl=document.getElementById('reportsTable'), empty=document.getElementById('reportsEmpty');
     if(!rows.length){ tbl.innerHTML=''; empty.classList.remove('hidden'); return; }
     empty.classList.add('hidden');
@@ -2292,9 +2387,43 @@ const PIPE = {
           <span class="tat ${tcls}">⏱ ${fmtTAT(inStageMs)}</span></div></div>`;
       }).join('') : `<div class="pcol-empty">No cases here</div>`;
       return `<div class="pcol">
-        <div class="pcol-h"><div class="step-no">${s.n}</div><div class="nm">${esc(s.name)}<small>${esc(s.team)}</small></div><div class="cnt">${inStage.length}</div></div>
+        <div class="pcol-h" style="cursor:pointer" onclick="PIPE.openStage(${s.n})" title="Click to see all ${inStage.length} case(s) in ${esc(s.name)}"><div class="step-no">${s.n}</div><div class="nm">${esc(s.name)}<small>${esc(s.team)}</small></div><div class="cnt">${inStage.length}</div></div>
         <div class="pcol-b">${cards}</div></div>`;
     }).join('');
+  },
+
+  /* Drill-down: show every case sitting in one stage as a focused dashboard + list */
+  openStage(n){
+    const s=STAGE_BY_N(n); if(!s) return;
+    const cs=STATE.cases.filter(c=>(c.status==='active'||c.status==='approved'||c.status==='disbursed') && Math.min(c.currentStage,TOTAL_STAGES)===n);
+    const listRows = cs.length ? cs.map(c=>{
+      const sanA=(c.stageData[6]&&c.stageData[6].raw&&c.stageData[6].raw.sanctionedAmt)||c.sanctionedAmt;
+      return `<tr onclick="UI.closeModal();WF.open('${c.id}')" style="cursor:pointer">
+        <td><span class="mono" style="color:var(--abc-red);font-weight:600">${esc(c.caseId)}</span></td>
+        <td><b>${esc(c.clientName||c.businessName||'—')}</b>${c.businessName?`<div style="font-size:11px;color:var(--ink-3)">${esc(c.businessName)}</div>`:''}</td>
+        <td class="mono">${c.amount?inrCr(c.amount):'—'}</td>
+        <td>${esc(caseZone(c))}</td>
+        <td>${esc(c.createdBy.name)}</td>
+        <td class="mono">${fmtTAT(caseTotalTAT(c))}</td></tr>`;
+    }).join('') : `<tr><td colspan="6" style="text-align:center;color:var(--ink-3);padding:22px">No cases currently at this stage.</td></tr>`;
+
+    const s2=DASHVIZ.stats(cs);
+    const mini=`<div class="kpi-grid" style="grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
+        <div class="kpi"><div class="val">${cs.length}</div><div class="lab">Cases here</div></div>
+        <div class="kpi"><div class="val">${inrCr(s2.reqAmt)}</div><div class="lab">Requested value</div></div>
+        <div class="kpi"><div class="val">${s2.avgTat!=null?fmtTAT(s2.avgTat):'—'}</div><div class="lab">Avg. TAT</div></div>
+        <div class="kpi"><div class="val">${Object.keys(s2.byZone).length}</div><div class="lab">Zones</div></div>
+      </div>`;
+
+    UI.openModal(`Stage ${n} · ${esc(s.name)} — ${cs.length} case(s)`,
+      `<div style="font-size:12.5px;color:var(--ink-3);margin:-4px 0 14px">Responsible: <b>${esc(s.team)}</b> · these are all cases currently sitting at this stage.</div>
+       ${mini}
+       <div class="tbl-wrap" style="max-height:340px;overflow:auto"><table class="tbl">
+         <thead><tr><th>Case ID</th><th>Client / Business</th><th>Amount</th><th>Zone</th><th>Sourced by</th><th>TAT</th></tr></thead>
+         <tbody>${listRows}</tbody></table></div>`,
+      `<button class="btn ghost" onclick="UI.closeModal()">Close</button>
+       <button class="btn primary" onclick="UI.closeModal();NAV.go('pipeline')">Open full pipeline</button>`,
+      true);
   }
 };
 
@@ -3086,6 +3215,180 @@ const DATA = {
     if(!w){ TOAST.show('Popup blocked','Please allow pop-ups to view the report.','err'); return; }
     w.document.open(); w.document.write(html); w.document.close();
     TOAST.show('Report ready','Use “Save as PDF / Print” in the new tab.','ok');
+  }
+};
+
+
+/* ============================================================
+   DECK — offline PPTX generator (dynamic dashboard export)
+   Builds a real .pptx (ZIP of XML) with native shapes: title bar,
+   KPI cards, bar charts (drawn as rectangles) and tables.
+   ============================================================ */
+const DECK = {
+  EMU:914400, W:12192000, H:6858000,     /* 13.333 x 7.5 in @ 914400 EMU/in */
+  RED:'C00000', REDDK:'8A0B1C', GOLD:'B07400', GREEN:'1E7E34', INK:'241015', GREY:'8A767B', LINE:'ECDFE0', PALE:'FBEDED', PANEL:'F6EFEC', WHITE:'FFFFFF',
+  _e(s){ return EXPORT._esc(s); },
+  _id:1, nid(){ return ++this._id; },
+
+  /* shape helpers (return <p:sp> XML). x,y,w,h in EMU */
+  rect(x,y,w,h,fill,opt={}){
+    const line=opt.line?`<a:ln w="${opt.lineW||12700}"><a:solidFill><a:srgbClr val="${opt.line}"/></a:solidFill></a:ln>`:'<a:ln><a:noFill/></a:ln>';
+    const geom=opt.round?'roundRect':'rect';
+    const fillXml = fill==='none'?'<a:noFill/>':`<a:solidFill><a:srgbClr val="${fill}"/></a:solidFill>`;
+    return `<p:sp><p:nvSpPr><p:cNvPr id="${this.nid()}" name="r"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr><p:spPr><a:xfrm><a:off x="${Math.round(x)}" y="${Math.round(y)}"/><a:ext cx="${Math.round(w)}" cy="${Math.round(h)}"/></a:xfrm><a:prstGeom prst="${geom}"><a:avLst/></a:prstGeom>${fillXml}${line}</p:spPr><p:txBody><a:bodyPr/><a:p/></p:txBody></p:sp>`;
+  },
+  text(x,y,w,h,runs,opt={}){
+    /* runs: [{t,sz,b,color,i}] ; opt: {align,valign,anchor} */
+    const anchor=opt.valign==='mid'?'ctr':(opt.valign==='bottom'?'b':'t');
+    const algn=opt.align||'l';
+    const paras=(Array.isArray(runs[0])?runs:[runs]).map(line=>{
+      const rr=line.map(r=>`<a:r><a:rPr lang="en-US" sz="${r.sz||1200}" b="${r.b?1:0}" i="${r.i?1:0}"><a:solidFill><a:srgbClr val="${r.color||this.INK}"/></a:solidFill><a:latin typeface="Arial"/></a:rPr><a:t>${this._e(r.t)}</a:t></a:r>`).join('');
+      return `<a:p><a:pPr algn="${algn}"/>${rr}</a:p>`;
+    }).join('');
+    return `<p:sp><p:nvSpPr><p:cNvPr id="${this.nid()}" name="t"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr><p:spPr><a:xfrm><a:off x="${Math.round(x)}" y="${Math.round(y)}"/><a:ext cx="${Math.round(w)}" cy="${Math.round(h)}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/></p:spPr><p:txBody><a:bodyPr wrap="square" anchor="${anchor}" lIns="45720" rIns="45720" tIns="18288" bIns="18288"/>${paras}</p:txBody></p:sp>`;
+  },
+
+  /* a chrome header (red bar + title + footer) */
+  chrome(title, sub){
+    let x='';
+    x+=this.rect(0,0,this.W,this.EMU*0.92,this.RED);
+    x+=this.text(this.EMU*0.32,0,this.EMU*11,this.EMU*0.92,[[{t:title,sz:2400,b:true,color:this.WHITE}]],{valign:'mid'});
+    if(sub) x+=this.text(this.EMU*0.32,this.EMU*0.96,this.EMU*12.6,this.EMU*0.34,[[{t:sub,sz:1150,b:true,color:this.REDDK}]],{valign:'mid'});
+    x+=this.text(this.EMU*8.9,this.H-this.EMU*0.42,this.EMU*4.1,this.EMU*0.34,[[{t:'Aditya Birla Capital Ltd.',sz:1050,b:true,color:this.RED}]],{align:'r',valign:'mid'});
+    return x;
+  },
+
+  /* KPI cards row: items [[value,label],...] laid out in a grid */
+  kpiCards(items, x0, y0, cols, cardW, cardH, gap){
+    let x=''; items.forEach((it,i)=>{
+      const col=i%cols, row=Math.floor(i/cols);
+      const cx=x0+col*(cardW+gap), cy=y0+row*(cardH+gap);
+      x+=this.rect(cx,cy,cardW,cardH,this.WHITE,{round:true,line:this.LINE,lineW:9525});
+      x+=this.rect(cx,cy,this.EMU*0.06,cardH,this.RED,{round:false});
+      x+=this.text(cx+this.EMU*0.14,cy+this.EMU*0.12,cardW-this.EMU*0.2,this.EMU*0.42,[[{t:String(it[0]),sz:2000,b:true,color:this.RED}]]);
+      x+=this.text(cx+this.EMU*0.14,cy+this.EMU*0.56,cardW-this.EMU*0.2,this.EMU*0.3,[[{t:it[1],sz:1000,color:this.GREY}]]);
+    });
+    return x;
+  },
+
+  /* horizontal bar chart drawn with rectangles. rows:[{label,value,display}] */
+  barChart(title, rows, x0, y0, w, h){
+    let x=''; 
+    x+=this.text(x0,y0,w,this.EMU*0.34,[[{t:title,sz:1300,b:true,color:this.INK}]]);
+    const top=y0+this.EMU*0.42; const rowH=Math.min(this.EMU*0.34,(h-this.EMU*0.42)/Math.max(rows.length,1));
+    const labelW=this.EMU*1.9, valW=this.EMU*1.0, trackX=x0+labelW, trackW=w-labelW-valW;
+    const max=Math.max(1,...rows.map(r=>r.value||0));
+    rows.forEach((r,i)=>{
+      const cy=top+i*rowH; const bh=Math.min(rowH*0.66,this.EMU*0.22);
+      x+=this.text(x0,cy,labelW-this.EMU*0.05,rowH,[[{t:r.label,sz:900,color:this.INK}]],{valign:'mid'});
+      x+=this.rect(trackX,cy+(rowH-bh)/2,trackW,bh,this.PANEL,{round:true});
+      const bw=Math.max(this.EMU*0.03,trackW*(r.value/max));
+      x+=this.rect(trackX,cy+(rowH-bh)/2,bw,bh,r.cls==='green'?this.GREEN:this.RED,{round:true});
+      x+=this.text(trackX+trackW+this.EMU*0.02,cy,valW,rowH,[[{t:String(r.display!=null?r.display:r.value),sz:900,b:true,color:this.INK}]],{valign:'mid'});
+    });
+    return x;
+  },
+
+  /* simple data table. head:[], rows:[[...]] */
+  table(head, rows, x0, y0, w, colW){
+    let x=''; const rowH=this.EMU*0.32;
+    /* header */
+    let cx=x0;
+    x+=this.rect(x0,y0,w,rowH,this.RED,{});
+    head.forEach((hd,i)=>{ x+=this.text(cx,y0,colW[i],rowH,[[{t:hd,sz:900,b:true,color:this.WHITE}]],{valign:'mid'}); cx+=colW[i]; });
+    rows.forEach((r,ri)=>{
+      const ry=y0+rowH*(ri+1); cx=x0;
+      x+=this.rect(x0,ry,w,rowH,ri%2?this.PALE:this.WHITE,{line:this.LINE,lineW:6350});
+      r.forEach((cell,i)=>{ x+=this.text(cx,ry,colW[i],rowH,[[{t:String(cell),sz:850,color:this.INK}]],{valign:'mid'}); cx+=colW[i]; });
+    });
+    return x;
+  },
+
+  /* build the slides' shape XML for a set of cases + a caption */
+  _slides(cs, caption){
+    const s=DASHVIZ.stats(cs);
+    const E=this.EMU;
+    /* ---- SLIDE 1: KPI + status + amount funnel ---- */
+    let s1=this.chrome('Lending Business — Dashboard', caption);
+    const kpis=[[s.total,'Total cases'],[s.active,'In progress'],[s.disbursed,'Disbursed / completed'],[s.rejected,'Rejected'],
+      [inrCr(s.reqAmt),'Total requested'],[inrCr(s.sanAmt),'Total sanctioned'],[inrCr(s.disAmt),'Total disbursed'],[s.avgTat!=null?fmtTAT(s.avgTat):'—','Avg. TAT / case']];
+    s1+=this.kpiCards(kpis, E*0.32, E*1.5, 4, E*3.0, E*0.92, E*0.18);
+    /* status mix as bars */
+    const stRows=Object.keys(s.byStatus).map(k=>({label:k,value:s.byStatus[k],display:s.byStatus[k]}));
+    s1+=this.barChart('Case status mix', stRows, E*0.32, E*3.9, E*6.1, E*2.7);
+    /* amount funnel */
+    const amtRows=[{label:'Requested',value:toCr(s.reqAmt),display:inrCr(s.reqAmt)},{label:'Sanctioned',value:toCr(s.sanAmt),display:inrCr(s.sanAmt),cls:'green'},{label:'Disbursed',value:toCr(s.disAmt),display:inrCr(s.disAmt),cls:'green'}];
+    s1+=this.barChart('Amount funnel (₹ Cr)', amtRows, E*6.7, E*3.9, E*6.3, E*2.7);
+
+    /* ---- SLIDE 2: pipeline by stage + channel + zone ---- */
+    let s2=this.chrome('Pipeline, Channels & Zones', caption);
+    const stageRows=STAGES.map(st=>({label:st.n+'. '+st.name,value:s.stageCounts[st.n]||0,display:s.stageCounts[st.n]||0}));
+    s2+=this.barChart('Active cases by stage', stageRows, E*0.32, E*1.55, E*6.1, E*5.0);
+    const chRows=Object.keys(s.byCh).map(k=>({label:k,value:s.byCh[k],display:s.byCh[k]})).sort((a,b)=>b.value-a.value);
+    s2+=this.barChart('Sourcing channel mix', chRows, E*6.7, E*1.55, E*6.3, E*2.3);
+    const zRows=Object.keys(s.byZone).map(z=>({label:z,value:s.byZone[z],display:s.byZone[z]})).sort((a,b)=>b.value-a.value);
+    s2+=this.barChart('Cases by zone', zRows, E*6.7, E*4.05, E*6.3, E*2.5);
+
+    /* ---- SLIDE 3: disbursal conversion + recent cases table ---- */
+    let s3=this.chrome('Conversion & Recent Cases', caption);
+    const convRows=Object.keys(s.chConv).map(k=>({label:k,value:s.chConv[k].pct,display:s.chConv[k].pct+'% ('+s.chConv[k].d+'/'+s.chConv[k].tot+')',cls:'green'})).sort((a,b)=>b.value-a.value);
+    s3+=this.barChart('Disbursement rate by channel', convRows, E*0.32, E*1.55, E*6.1, E*3.0);
+    /* recent cases table */
+    const recent=cs.slice().sort((a,b)=>b.createdAt-a.createdAt).slice(0,12).map(c=>{
+      const sa=(c.stageData[6]&&c.stageData[6].raw&&c.stageData[6].raw.sanctionedAmt)||c.sanctionedAmt;
+      return [c.caseId,(c.clientName||c.businessName||'—').slice(0,20),inrCr(c.amount),sa?inrCr(sa):'—',caseStageLabel(c).slice(0,16)];
+    });
+    s3+=this.text(E*6.7,E*1.55,E*6.3,E*0.34,[[{t:'Recent cases',sz:1300,b:true,color:this.INK}]]);
+    s3+=this.table(['Case ID','Client','Req.','Sanct.','Stage'], recent, E*6.7,E*1.95,E*6.3,[E*1.7,E*1.7,E*0.95,E*0.95,E*1.0]);
+
+    return [s1,s2,s3];
+  },
+
+  download(mode){
+    const cs = (mode==='reports' && REPORTS._filtered) ? REPORTS._filtered : STATE.cases;
+    if(!cs.length){ TOAST.show('No data','Add or generate cases first.','err'); return; }
+    const caption = (mode==='reports')
+      ? ('Filtered view: '+(REPORTS._filterLabel||'All')+'  ·  '+cs.length+' cases  ·  '+fmtDateTime(now()))
+      : ('All cases  ·  '+cs.length+' cases  ·  '+fmtDateTime(now()));
+    try{
+      const slides=this._slides(cs, caption);
+      const bytes=this._build(slides);
+      const name=(mode==='reports'?'ABC-LOS-Report-Dashboard-':'ABC-LOS-Dashboard-')+new Date().toISOString().slice(0,10)+'.pptx';
+      EXPORT._download(bytes, name, 'application/vnd.openxmlformats-officedocument.presentationml.presentation');
+      TOAST.show('PPT downloaded', slides.length+' slides · '+cs.length+' cases.','ok');
+    }catch(e){ TOAST.show('PPT failed', e.message,'err'); }
+  },
+
+  /* assemble the PPTX package */
+  _build(slidesXml){
+    const files=[];
+    const rel='http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+    files.push({name:'[Content_Types].xml', str:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/ppt/presentation.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml"/><Override PartName="/ppt/slideMasters/slideMaster1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml"/><Override PartName="/ppt/slideLayouts/slideLayout1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"/>${slidesXml.map((_,i)=>`<Override PartName="/ppt/slides/slide${i+1}.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml"/>`).join('')}</Types>`});
+    files.push({name:'_rels/.rels', str:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="${rel}/officeDocument" Target="ppt/presentation.xml"/></Relationships>`});
+    /* presentation.xml */
+    files.push({name:'ppt/presentation.xml', str:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:presentation xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="${rel}" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"><p:sldMasterIdLst><p:sldMasterId id="2147483648" r:id="rId1"/></p:sldMasterIdLst><p:sldIdLst>${slidesXml.map((_,i)=>`<p:sldId id="${256+i}" r:id="rId${i+2}"/>`).join('')}</p:sldIdLst><p:sldSz cx="${this.W}" cy="${this.H}"/><p:notesSz cx="${this.H}" cy="${this.W}"/></p:presentation>`});
+    files.push({name:'ppt/_rels/presentation.xml.rels', str:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="${rel}/slideMaster" Target="slideMasters/slideMaster1.xml"/>${slidesXml.map((_,i)=>`<Relationship Id="rId${i+2}" Type="${rel}/slide" Target="slides/slide${i+1}.xml"/>`).join('')}</Relationships>`});
+    /* master + layout (minimal) */
+    files.push({name:'ppt/slideMasters/slideMaster1.xml', str:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:sldMaster xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="${rel}" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"><p:cSld><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr/></p:spTree></p:cSld><p:clrMap bg1="lt1" tx1="dk1" bg2="lt2" tx2="dk2" accent1="accent1" accent2="accent2" accent3="accent3" accent4="accent4" accent5="accent5" accent6="accent6" hlink="hlink" folHlink="folHlink"/><p:sldLayoutIdLst><p:sldLayoutId id="2147483649" r:id="rId1"/></p:sldLayoutIdLst></p:sldMaster>`});
+    files.push({name:'ppt/slideMasters/_rels/slideMaster1.xml.rels', str:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="${rel}/slideLayout" Target="../slideLayouts/slideLayout1.xml"/></Relationships>`});
+    files.push({name:'ppt/slideLayouts/slideLayout1.xml', str:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:sldLayout xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="${rel}" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" type="blank" preserve="1"><p:cSld name="Blank"><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr/></p:spTree></p:cSld><p:clrMapOvr><a:overrideClrMapping bg1="lt1" tx1="dk1" bg2="lt2" tx2="dk2" accent1="accent1" accent2="accent2" accent3="accent3" accent4="accent4" accent5="accent5" accent6="accent6" hlink="hlink" folHlink="folHlink"/></p:clrMapOvr></p:sldLayout>`});
+    files.push({name:'ppt/slideLayouts/_rels/slideLayout1.xml.rels', str:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="${rel}/slideMaster" Target="../slideMasters/slideMaster1.xml"/></Relationships>`});
+    /* slides */
+    slidesXml.forEach((sp,i)=>{
+      files.push({name:`ppt/slides/slide${i+1}.xml`, str:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="${rel}" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"><p:cSld><p:bg><p:bgPr><a:solidFill><a:srgbClr val="FFFFFF"/></a:solidFill><a:effectLst/></p:bgPr></p:bg><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr/>${sp}</p:spTree></p:cSld><p:clrMapOvr><a:overrideClrMapping bg1="lt1" tx1="dk1" bg2="lt2" tx2="dk2" accent1="accent1" accent2="accent2" accent3="accent3" accent4="accent4" accent5="accent5" accent6="accent6" hlink="hlink" folHlink="folHlink"/></p:clrMapOvr></p:sld>`});
+      files.push({name:`ppt/slides/_rels/slide${i+1}.xml.rels`, str:`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="${rel}/slideLayout" Target="../slideLayouts/slideLayout1.xml"/></Relationships>`});
+    });
+    return EXPORT._zip(files);
   }
 };
 
