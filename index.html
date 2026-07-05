@@ -554,6 +554,7 @@ table.tbl tr{cursor:pointer}
 .bar-row.drillable{border-radius:8px;padding:2px 6px;margin-left:-6px;margin-right:-6px;transition:background .12s}
 .bar-row.drillable:hover{background:rgba(190,30,45,.07)}
 .bar-row.drillable:hover .bar-fill{filter:brightness(1.14)}
+.bar-row:hover .bar-fill{filter:brightness(1.1)}
 .pie-leg.drillable{border-radius:7px;padding:3px 5px;margin:-3px -5px;transition:background .12s}
 .pie-leg.drillable:hover{background:rgba(190,30,45,.07)}
 .pie-slice{transition:fill .12s}
@@ -2306,7 +2307,10 @@ const DRILL = {
   _cs:[], _title:'',
   open(dim, key, label){
     /* base set = whatever the current view is showing */
-    const base = (currentViewId()==='reports' && REPORTS._filtered) ? REPORTS._filtered : STATE.cases;
+    let base = STATE.cases;
+    const view = currentViewId();
+    if(view==='reports' && REPORTS._filtered) base = REPORTS._filtered;
+    else if(view==='analysis'){ const zf=document.getElementById('anZone'); const z=zf&&zf.value; if(z) base = STATE.cases.filter(c=>caseZone(c)===z); }
     const cs = filterCasesBy(base, dim, key);
     const dimName = DIM_LABEL[dim]||dim;
     const niceLabel = dim==='stage' ? ('Stage '+key+' · '+((STAGE_BY_N(Number(key))||{}).name||'')) : label;
@@ -2550,17 +2554,21 @@ function pieSVG(data, drill){
   if(!total) return {svg:'<div style="color:var(--ink-3);font-size:13px">No data</div>',legend:[]};
   const cx=80,cy=80,r=72; let a0=-Math.PI/2; let paths='';
   const legend=[];
+  const drillable = !!(drill&&drill.dim);
   data.forEach((d,i)=>{
     const frac=d.value/total, a1=a0+frac*2*Math.PI;
     const x0=cx+r*Math.cos(a0), y0=cy+r*Math.sin(a0), x1=cx+r*Math.cos(a1), y1=cy+r*Math.sin(a1);
     const large=frac>0.5?1:0; const col=PIE_COLORS[i%PIE_COLORS.length]; const lit=lighten(col,0.28);
     const key=d.key!=null?d.key:d.label;
-    const dz = drill&&drill.dim ? ` class="pie-slice" style="cursor:pointer" data-base="${col}" data-lit="${lit}" onmouseover="this.setAttribute('fill',this.dataset.lit)" onmouseout="this.setAttribute('fill',this.dataset.base)" onclick="DRILL.open('${esc(drill.dim)}','${esc(key)}','${esc(d.label)}')"><title>${esc(d.label)}: ${d.value} — click for insights</title>` : `>`;
+    /* hover highlight always on; click only when drillable */
+    const cursor = drillable ? 'cursor:pointer' : '';
+    const clickAttr = drillable ? ` onclick="DRILL.open('${esc(drill.dim)}','${esc(key)}','${esc(d.label)}')"` : '';
+    const commonAttrs = ` class="pie-slice" style="${cursor}" data-base="${col}" data-lit="${lit}" onmouseover="this.setAttribute('fill',this.dataset.lit)" onmouseout="this.setAttribute('fill',this.dataset.base)"${clickAttr}`;
+    const titleEl = `<title>${esc(d.label)}: ${d.value}${drillable?' — click for insights':''}</title>`;
     if(data.length===1){
-      paths=`<circle cx="${cx}" cy="${cy}" r="${r}" fill="${col}"${drill&&drill.dim?` class="pie-slice" style="cursor:pointer" data-base="${col}" data-lit="${lit}" onmouseover="this.setAttribute('fill',this.dataset.lit)" onmouseout="this.setAttribute('fill',this.dataset.base)" onclick="DRILL.open('${esc(drill.dim)}','${esc(key)}','${esc(d.label)}')"`:''}/>`;
+      paths+=`<circle cx="${cx}" cy="${cy}" r="${r}" fill="${col}"${commonAttrs}>${titleEl}</circle>`;
     } else {
-      paths+=`<path d="M${cx},${cy} L${x0.toFixed(2)},${y0.toFixed(2)} A${r},${r} 0 ${large} 1 ${x1.toFixed(2)},${y1.toFixed(2)} Z" fill="${col}"${dz}`;
-      if(drill&&drill.dim) paths+=`</path>`; else paths+=``;
+      paths+=`<path d="M${cx},${cy} L${x0.toFixed(2)},${y0.toFixed(2)} A${r},${r} 0 ${large} 1 ${x1.toFixed(2)},${y1.toFixed(2)} Z" fill="${col}"${commonAttrs}>${titleEl}</path>`;
     }
     legend.push({label:d.label,value:d.value,pct:Math.round(frac*100),color:col,key});
     a0=a1;
@@ -2618,30 +2626,31 @@ const ANALYSIS = {
 
     /* 1. Pie — sourcing channels */
     const byCh={}; cs.forEach(c=>{const g=CHANNEL_GROUP(caseChannel(c)); byCh[g]=(byCh[g]||0)+1;});
-    const chData=Object.keys(byCh).map(k=>({label:k,value:byCh[k]})).sort((a,b)=>b.value-a.value);
+    const chData=Object.keys(byCh).map(k=>({label:k,value:byCh[k],key:k})).sort((a,b)=>b.value-a.value);
 
     /* 2. Pie — status distribution */
     const stLabels={active:'In‑progress',approved:'Approved',disbursed:'Disbursed',completed:'Completed',rejected:'Rejected'};
+    const stKey={'In‑progress':'active','Approved':'approved','Disbursed':'disbursed','Completed':'completed','Rejected':'rejected'};
     const byStatus={}; cs.forEach(c=>{const l=stLabels[c.status]||c.status; byStatus[l]=(byStatus[l]||0)+1;});
-    const stData=Object.keys(byStatus).map(k=>({label:k,value:byStatus[k]}));
+    const stData=Object.keys(byStatus).map(k=>({label:k,value:byStatus[k],key:stKey[k]||k}));
 
-    html+=`<div class="an-grid">${pieCard('Sourcing channel distribution','Share of cases by how they were sourced',chData)}${pieCard('Case status mix','Where all cases currently stand',stData)}</div>`;
+    html+=`<div class="an-grid">${pieCard('Sourcing channel distribution','Share of cases by how they were sourced · hover to highlight, click for insights',chData,{dim:'channel'})}${pieCard('Case status mix','Where all cases currently stand · hover to highlight, click for insights',stData,{dim:'status'})}</div>`;
 
     /* 3. Bar — disbursement % over logins, per channel */
     const chRows=Object.keys(byCh).map(k=>{
       const logins=byCh[k];
       const d=cs.filter(c=>CHANNEL_GROUP(caseChannel(c))===k && isDisbursed(c)).length;
       const pct=logins?Math.round(d/logins*100):0;
-      return {label:k, value:pct, display:pct+'% ('+d+'/'+logins+')', cls:'green'};
+      return {label:k, value:pct, display:pct+'% ('+d+'/'+logins+')', cls:'green', key:k};
     }).sort((a,b)=>b.value-a.value);
 
     /* 4. Bar — cases by zone (only meaningful when not already filtered) */
     const byZone={}; STATE.cases.forEach(c=>{const z=caseZone(c); byZone[z]=(byZone[z]||0)+1;});
-    const zoneRows=Object.keys(byZone).map(z=>({label:z,value:byZone[z],display:String(byZone[z])})).sort((a,b)=>b.value-a.value);
+    const zoneRows=Object.keys(byZone).map(z=>({label:z,value:byZone[z],display:String(byZone[z]),key:z})).sort((a,b)=>b.value-a.value);
 
     html+=`<div class="an-grid">
-      ${barCard('Disbursement rate by channel','Disbursed cases ÷ cases logged, per sourcing channel',chRows)}
-      ${barCard('Cases by zone','FLS zone distribution (all zones)',zoneRows)}
+      ${barCard('Disbursement rate by channel','Disbursed cases ÷ cases logged, per sourcing channel',chRows,{drill:{dim:'channel'}})}
+      ${barCard('Cases by zone','FLS zone distribution (all zones)',zoneRows,{drill:{dim:'zone'}})}
     </div>`;
 
     /* 5. Rejection reasons */
