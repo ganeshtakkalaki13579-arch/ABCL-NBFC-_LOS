@@ -132,7 +132,7 @@ a{color:var(--abc-red);text-decoration:none}
 .form-msg.ok{display:block;background:var(--ok-bg);color:var(--ok)}
 
 /* ===================== APP SHELL ===================== */
-#app{display:none;min-height:100vh;grid-template-columns:248px 1fr;grid-template-rows:auto 1fr}
+#app{display:grid;min-height:100vh;grid-template-columns:248px 1fr;grid-template-rows:auto 1fr}
 .sidebar{
   grid-row:1 / span 2;background:linear-gradient(185deg,var(--sidebar),var(--sidebar-2));
   color:#f3e7e9;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;
@@ -587,123 +587,6 @@ table.tbl tr{cursor:pointer}
 </head>
 <body>
 
-<!-- ================= PUBLIC WEBSITE (LANDING) — reachable from the user menu ================= -->
-<div id="siteScreen">
-  <nav class="site-nav">
-    <div class="site-nav-in">
-      <div class="brand">
-        <div class="chip"><img id="siteLogo" alt="Aditya Birla Capital"/></div>
-        <div class="nm">Aditya Birla Capital<small>Loan Origination System</small></div>
-      </div>
-      <div class="site-links">
-        <a class="navlink" onclick="SITE.scrollTo('features')">Features</a>
-        <a class="navlink" onclick="SITE.scrollTo('process')">Process</a>
-        <a class="navlink" onclick="SITE.scrollTo('about')">About</a>
-        <a onclick="SITE.enter('dashboard')">Open Dashboard</a>
-        <button class="btn primary" onclick="SITE.enter('newcase')">Get Started</button>
-      </div>
-    </div>
-  </nav>
-
-  <!-- HERO -->
-  <header class="hero">
-    <div class="hero-in">
-      <div>
-        <span class="eyebrow">NBFC Lending Platform</span>
-        <h1>The complete <span class="grad">loan origination</span> workflow, end to end.</h1>
-        <p class="lead">From sourcing to disbursement and post‑disbursement — manage every loan case through 11 guided stages, track turn‑around‑time automatically, and keep every stakeholder in sync.</p>
-        <div class="hero-cta">
-          <button class="btn primary btn-xl" onclick="SITE.enter('newcase')">Get Started</button>
-          <button class="btn ghost btn-xl" onclick="SITE.enter('dashboard')">Open Dashboard</button>
-        </div>
-        <div class="hero-trust">
-          <div class="t"><div class="n">11</div><div class="l">Guided stages</div></div>
-          <div class="t"><div class="n">CC1–CC4</div><div class="l">Auto‑routed committees</div></div>
-          <div class="t"><div class="n">TAT</div><div class="l">Tracked &amp; exportable</div></div>
-        </div>
-      </div>
-      <div class="hero-art">
-        <div class="hero-card">
-          <div class="hc-top">
-            <span class="hc-dot" style="background:#ff5f57"></span><span class="hc-dot" style="background:#febc2e"></span><span class="hc-dot" style="background:#28c840"></span>
-            <span style="margin-left:8px;font-size:12px;color:var(--ink-3);font-weight:600">LOS‑374921 · Case pipeline</span>
-          </div>
-          <div class="mini-stages">
-            <div class="hms done"><span class="s-no">✓</span> Sourcing <span class="grow">RM · done</span></div>
-            <div class="hms done"><span class="s-no">✓</span> Business Analyst — CAM <span class="grow">BA · done</span></div>
-            <div class="hms done"><span class="s-no">✓</span> Risk review <span class="grow">RA · done</span></div>
-            <div class="hms" style="border-color:var(--abc-red);box-shadow:0 0 0 3px rgba(190,30,45,.1)"><span class="s-no">5</span> Credit Committee <span class="grow" style="color:var(--abc-red)">in review</span></div>
-            <div class="hms"><span class="s-no">6</span> Sanction <span class="grow">Legal</span></div>
-          </div>
-        </div>
-        <div class="hero-badge"><div class="ic" style="font-size:13px;font-weight:800;font-family:var(--display)">TAT</div><div><b>Avg. 2d 4h</b><div><small>across all live cases</small></div></div></div>
-      </div>
-    </div>
-  </header>
-
-  <!-- FEATURES -->
-  <section class="site-section" id="features">
-    <div class="sec-head">
-      <div class="kick">Everything in one place</div>
-      <h2>Built for every stakeholder in the lending chain</h2>
-      <p>Relationship Managers, Business Analysts, Risk, the Credit Committee, Legal and Operations — each works the same case as it flows forward.</p>
-    </div>
-    <div class="feat-grid">
-      <div class="feat"><div class="fic">1</div><h3>11‑stage guided pipeline</h3><p>Each case advances one stage at a time — Sourcing, Case Login, BA/CAM, Risk, Credit Committee, Sanction, Customer Approval, CAD, Disbursement, PDD and NACH/ESCROW.</p></div>
-      <div class="feat"><div class="fic">2</div><h3>Smart committee routing</h3><p>Cases are automatically routed through CC1 → CC4 based on ticket size and credit rating. Each committee must approve before the next reviews.</p></div>
-      <div class="feat"><div class="fic">3</div><h3>Automatic TAT tracking</h3><p>Turn‑Around‑Time is captured at every stage and rolled up per case — so delays are visible at a glance on the pipeline board.</p></div>
-      <div class="feat"><div class="fic">4</div><h3>Shared reporting</h3><p>Every account holder sees all cases, regardless of who sourced them, with filters by stage, status and sourcer.</p></div>
-      <div class="feat"><div class="fic">5</div><h3>One‑click Excel export</h3><p>Download a full tracker — case details across all 11 stages plus stage‑wise TAT and a summary — as a genuine .xlsx, fully offline.</p></div>
-      <div class="feat"><div class="fic">6</div><h3>Stakeholder hand‑offs</h3><p>Finished a stage? Notify the next team (BA → RA → CC …) by entering their email. Every message is logged in the Email Center.</p></div>
-      <div class="feat"><div class="fic">7</div><h3>Document uploads</h3><p>Attach KYC, financials, the CAM, CAD and PDD documents right on the relevant stage, and download them back anytime.</p></div>
-      <div class="feat"><div class="fic">8</div><h3>Analysis &amp; insights</h3><p>Channel mix, disbursal‑vs‑login conversion, rejection reasons and zonal performance — all visualised on the Analysis tab.</p></div>
-    </div>
-  </section>
-
-  <!-- PROCESS -->
-  <section class="site-section alt" id="process">
-    <div class="inner">
-      <div class="sec-head">
-        <div class="kick">How it works</div>
-        <h2>One case, eleven stages, zero guesswork</h2>
-        <p>Open a case from the pipeline and push it forward with “Save &amp; advance”. Here's the full journey.</p>
-      </div>
-      <div class="flow-track" id="siteFlow"></div>
-    </div>
-  </section>
-
-  <!-- ABOUT / CTA -->
-  <section class="site-section" id="about">
-    <div class="sec-head">
-      <div class="kick">About</div>
-      <h2>A focused tool for Mid‑Market lending</h2>
-      <p>This Loan Origination System digitises Aditya Birla Capital's credit workflow — incorporating the Credit Appraisal Memo (CAM) fields, committee structure and post‑disbursement steps — into a single, easy‑to‑use platform. Abbreviations are explained throughout, and a full glossary is one click away once you're in.</p>
-    </div>
-  </section>
-
-  <div class="cta-band">
-    <div class="cta-inner">
-      <h2>Ready to move your first case?</h2>
-      <p>Open the workspace and start building your lending pipeline today.</p>
-      <button class="btn-white" onclick="SITE.enter('newcase')">Get Started</button>
-    </div>
-  </div>
-
-  <!-- FOOTER -->
-  <footer class="site-foot">
-    <div class="site-foot-in">
-      <div style="max-width:300px">
-        <div class="chip"><img id="siteLogoFoot" alt="Aditya Birla Capital"/></div>
-        <p style="margin-top:13px;font-size:13px;line-height:1.6">End‑to‑end Loan Origination System for NBFC lending — sourcing to disbursement, with TAT tracking and shared reporting.</p>
-      </div>
-      <div class="fcol"><h5>Platform</h5><a onclick="SITE.scrollTo('features')">Features</a><a onclick="SITE.scrollTo('process')">The 11 stages</a><a onclick="SITE.enter('dashboard')">Open dashboard</a><a onclick="SITE.enter('newcase')">Get started</a></div>
-      <div class="fcol"><h5>Workflow</h5><a onclick="SITE.scrollTo('process')">Sourcing &amp; Case Login</a><a onclick="SITE.scrollTo('process')">Credit Committee</a><a onclick="SITE.scrollTo('process')">Sanction &amp; Disbursement</a><a onclick="SITE.scrollTo('process')">PDD &amp; NACH/ESCROW</a></div>
-      <div class="fcol"><h5>Get started</h5><a onclick="SITE.enter('newcase')">Start a new case</a><a onclick="SITE.enter('data')">Generate sample data</a><a onclick="SITE.enter('help')">Process guide</a></div>
-    </div>
-    <div class="copy">© 2026 Aditya Birla Capital · Loan Origination System — internal prototype build. LOS = Loan Origination System · NBFC = Non‑Banking Financial Company.</div>
-  </footer>
-</div>
-
 <!-- ================= APP SHELL ================= -->
 <div id="app">
   <!-- SIDEBAR -->
@@ -763,10 +646,6 @@ table.tbl tr{cursor:pointer}
         <div class="mh" id="menuEmail">user@email</div>
         <a onclick="NAV.go('reports')"><span>📊</span> My reports</a>
         <a onclick="NAV.go('glossary')"><span>📖</span> Glossary of terms</a>
-        <a onclick="PROFILE.edit()"><span>👤</span> Edit my name &amp; role</a>
-        <a onclick="CLOUD.openSetup()"><span>☁️</span> Cloud sync</a>
-        <div class="sep"></div>
-        <a onclick="SITE.home()"><span>🏠</span> About this platform</a>
       </div>
     </div>
   </header>
@@ -979,18 +858,6 @@ table.tbl tr{cursor:pointer}
 
 <div id="toasts"></div>
 
-<!-- ============================================================
-     CLOUD BACKEND CONFIG (optional).
-     To enable cross-device sync of accounts & cases, create a free
-     Firebase project, enable Cloud Firestore, and paste your web-app
-     config object below (replace the null). Every device that opens
-     this file will then share the same backend automatically.
-     Leave it as null to keep the app fully local (per-device).
-     ============================================================ -->
-<script>
-window.__ABC_CLOUD__ = {"apiKey":"AIzaSyA-G3MZoQqJW4IzaBh2mBzN16-EeuuIaPA","authDomain":"abclnbfc-los.firebaseapp.com","projectId":"abclnbfc-los","appId":"1:580126083361:web:8799dc50b589dd54995660"};
-</script>
-
 <script>
 /* ============================================================
    PART A — CONSTANTS, DATA, HELPERS, STATE
@@ -1143,222 +1010,6 @@ const DB = {
   persistent(){ return LS_OK; }
 };
 
-/* ============================================================
-   CLOUD — optional cross-device backend (Firebase Firestore).
-   • Config comes from window.__ABC_CLOUD__ (baked into the file) or
-     from localStorage (set via the in-app "Cloud sync" setup).
-   • When configured & reachable: users, cases and memory are synced
-     to Firestore so any device sees the same accounts & cases.
-   • When absent/offline/error: the app stays fully local (unchanged).
-   All Firestore access is isolated here and guarded by CLOUD.ready.
-   ============================================================ */
-const CLOUD = {
-  ready:false, db:null, status:'off', _lastCases:{}, _cfg:null,
-  cfg(){
-    if(this._cfg!==null) return this._cfg;
-    let c = (typeof window!=='undefined' && window.__ABC_CLOUD__) ? window.__ABC_CLOUD__ : null;
-    if(!c){ try{ const s=localStorage.getItem('los_cloud_cfg'); if(s) c=JSON.parse(s); }catch(e){} }
-    this._cfg = c||false;
-    return this._cfg;
-  },
-  configured(){ const c=this.cfg(); return !!(c && c.projectId && c.apiKey); },
-  saveCfg(obj){ try{ localStorage.setItem('los_cloud_cfg', JSON.stringify(obj)); }catch(e){} this._cfg=obj; },
-  clearCfg(){ try{ localStorage.removeItem('los_cloud_cfg'); }catch(e){} this._cfg=false; this.ready=false; this.status='off'; },
-
-  _loadScript(src){ return new Promise((res,rej)=>{ const s=document.createElement('script'); s.src=src; s.onload=res; s.onerror=()=>rej(new Error('load '+src)); document.head.appendChild(s); }); },
-
-  /* Load Firebase (compat) from CDN and connect. Returns true if ready. */
-  async init(){
-    if(this.ready) return true;
-    if(!this.configured()) { this.status='off'; return false; }
-    try{
-      this.status='connecting';
-      if(!(window.firebase && window.firebase.firestore)){
-        const base='https://www.gstatic.com/firebasejs/10.12.0/';
-        await this._loadScript(base+'firebase-app-compat.js');
-        await this._loadScript(base+'firebase-firestore-compat.js');
-      }
-      if(!window.firebase.apps || !window.firebase.apps.length){ window.firebase.initializeApp(this.cfg()); }
-      this.db = window.firebase.firestore();
-      this.ready=true; this.status='connected';
-      return true;
-    }catch(e){ this.ready=false; this.status='error'; console.warn('CLOUD init failed', e); return false; }
-  },
-
-  _col(name){ return this.db.collection(name); },
-
-  /* Pull cloud users + cases, merge with local, push any local-only up. */
-  async pull(){
-    if(!this.ready) return false;
-    if(this._pulling) return this._pulling;      /* dedupe concurrent pulls */
-    this._pulling = (async()=>{
-    try{
-      const [uSnap, cSnap] = await Promise.all([ this._col('los_users').get(), this._col('los_cases').get() ]);
-      const cloudUsers=[]; uSnap.forEach(d=>cloudUsers.push(d.data()));
-      const cloudCases=[]; cSnap.forEach(d=>cloudCases.push(d.data()));
-      /* merge users by email (prefer newer updatedAt) */
-      const uMap={};
-      (STATE.users||[]).forEach(u=>{ uMap[u.email]=u; });
-      cloudUsers.forEach(u=>{ const cur=uMap[u.email]; if(!cur || (u.updatedAt||0)>=(cur.updatedAt||0)) uMap[u.email]=u; });
-      const mergedUsers=Object.values(uMap);
-      /* merge cases by id (prefer newer updatedAt) */
-      const cMap={};
-      (STATE.cases||[]).forEach(c=>{ cMap[c.id]=c; });
-      cloudCases.forEach(c=>{ const cur=cMap[c.id]; if(!cur || (c.updatedAt||0)>=(cur.updatedAt||0)) cMap[c.id]=c; });
-      const mergedCases=Object.values(cMap);
-      STATE.users=mergedUsers; DB.set(K.users, mergedUsers);
-      STATE.cases=mergedCases; normalizeAllCases(); DB.set(K.cases, STATE.cases);
-      /* snapshot = what cloud currently holds, so syncCases() pushes the local-only diff up */
-      this._lastCases={}; cloudCases.forEach(c=>{ this._lastCases[c.id]=JSON.stringify(cMap[c.id]||c); });
-      /* push everything back so cloud has any local-only records too */
-      await this.pushUsers(true);
-      await this.syncCases(true);
-      /* memory */
-      try{ const mSnap=await this._col('los_meta').doc('memory').get(); if(mSnap.exists){ const m=mSnap.data()&&mSnap.data().data; if(m){ MEM._data=m; DB.set(K.memory,m); } } }catch(e){}
-      return true;
-    }catch(e){ console.warn('CLOUD pull failed', e); this.status='error'; return false; }
-    finally{ this._pulling=null; }
-    })();
-    return this._pulling;
-  },
-
-  /* Upsert all users (small set). */
-  async pushUsers(silent){
-    if(!this.ready) return;
-    try{
-      const batch=this.db.batch();
-      (STATE.users||[]).forEach(u=>{ const id=this._docId(u.email); batch.set(this._col('los_users').doc(id), JSON.parse(JSON.stringify(u))); });
-      await batch.commit();
-    }catch(e){ if(!silent) console.warn('pushUsers failed', e); }
-  },
-
-  /* Diff STATE.cases against last snapshot; push changed, delete removed. */
-  async syncCases(silent){
-    if(!this.ready) return;
-    try{
-      const cur={}; (STATE.cases||[]).forEach(c=>cur[c.id]=c);
-      const ops=[]; const batch=this.db.batch(); let n=0;
-      for(const id in cur){
-        const js=JSON.stringify(cur[id]);
-        if(this._lastCases[id]!==js){ batch.set(this._col('los_cases').doc(id), JSON.parse(js)); n++; }
-      }
-      for(const id in this._lastCases){ if(!(id in cur)){ batch.delete(this._col('los_cases').doc(id)); n++; } }
-      if(n){ await batch.commit(); }
-      this._lastCases={}; for(const id in cur) this._lastCases[id]=JSON.stringify(cur[id]);
-    }catch(e){ if(!silent) console.warn('syncCases failed', e); }
-  },
-
-  async pushMemory(){ if(!this.ready) return; try{ await this._col('los_meta').doc('memory').set({data:MEM._data||{}}); }catch(e){} },
-
-  _docId(email){ return String(email||'').replace(/[\/#\[\]\*\.]/g,'_').slice(0,300)||'unknown'; },
-
-  /* called by app whenever cases change (after local persist).
-     If cloud isn't ready yet (still connecting), mark dirty and flush on connect. */
-  onCasesChanged(){ if(this.ready){ this.syncCases(); } else if(this.configured()){ this._casesDirty=true; this._ensureConnect(); } },
-  onUsersChanged(){ if(this.ready){ this.pushUsers(); } else if(this.configured()){ this._usersDirty=true; this._ensureConnect(); } },
-  onMemoryChanged(){ if(this.ready){ this.pushMemory(); } else if(this.configured()){ this._memDirty=true; this._ensureConnect(); } },
-
-  /* connect in the background (once) and flush any pending changes */
-  _ensureConnect(){
-    if(this.ready || this._connecting) return;
-    this._connecting=true;
-    this.init().then(okc=>{ this._connecting=false; if(okc) return this._flush(); }).catch(()=>{ this._connecting=false; });
-  },
-  _flush(){
-    /* pull first so we merge before pushing, then push pending changes */
-    return this.pull().then(()=>{
-      if(this._usersDirty){ this._usersDirty=false; this.pushUsers(true); }
-      if(this._casesDirty){ this._casesDirty=false; this.syncCases(true); }
-      if(this._memDirty){ this._memDirty=false; this.pushMemory(); }
-    });
-  },
-
-  statusLabel(){
-    if(this.ready) return '<span style="color:var(--ok);font-weight:600">● Connected & syncing</span>';
-    if(this.status==='connecting') return '<span style="color:var(--gold);font-weight:600">● Connecting…</span>';
-    if(this.status==='error') return '<span style="color:var(--bad);font-weight:600">● Connection error</span>';
-    if(this.configured()) return '<span style="color:var(--gold);font-weight:600">● Configured (not yet connected)</span>';
-    return '<span style="color:var(--ink-3);font-weight:600">○ Off — local only</span>';
-  },
-
-  openSetup(){
-    if(typeof UI==='undefined') return;
-    const cfg=this.cfg()||{};
-    const val=k=>cfg&&cfg[k]?String(cfg[k]).replace(/"/g,'&quot;'):'';
-    const baked = (typeof window!=='undefined' && window.__ABC_CLOUD__) ? true : false;
-    const body=`
-      <div style="font-size:13px;color:var(--ink-2);line-height:1.6">
-        Cross-device sync lets every device that opens this site share the <b>same accounts &amp; cases</b>.
-        It uses a free <b>Firebase Firestore</b> database that you own. Status: ${this.statusLabel()}
-      </div>
-      <div class="banner warn" style="margin:14px 0"><span class="bi">🔒</span><div style="font-size:12.5px">
-        <b>Prototype security note:</b> this stores account records (including a basic password hash) in a database whose read key is public in the page.
-        Use <b>demo / non-sensitive passwords</b> only, and set Firestore rules. This is fine for a college/internship demo, not for real customer data.
-      </div></div>
-      ${baked?`<div class="banner info" style="margin-bottom:12px"><span class="bi">✅</span><div style="font-size:12.5px">A cloud config is <b>baked into this file</b>, so every device already shares it. You can override it on just this device below.</div></div>`:''}
-      <div style="font-size:12.5px;color:var(--ink-3);margin-bottom:10px">Paste the values from your Firebase project (Project settings → Your apps → SDK setup → Config):</div>
-      <div class="field"><label>apiKey</label><input id="cfApiKey" value="${val('apiKey')}" placeholder="AIza…"></div>
-      <div class="field"><label>authDomain</label><input id="cfAuthDomain" value="${val('authDomain')}" placeholder="your-app.firebaseapp.com"></div>
-      <div class="field"><label>projectId</label><input id="cfProjectId" value="${val('projectId')}" placeholder="your-app"></div>
-      <div class="field"><label>appId</label><input id="cfAppId" value="${val('appId')}" placeholder="1:…:web:…"></div>
-      <details style="margin-top:8px"><summary style="cursor:pointer;font-size:12.5px;color:var(--abc-red)">Show step-by-step setup</summary>
-        <ol style="font-size:12px;color:var(--ink-2);line-height:1.7;margin:8px 0 0 4px;padding-left:18px">
-          <li>Go to <b>console.firebase.google.com</b> → Add project (free).</li>
-          <li>Build → <b>Firestore Database</b> → Create → <b>Start in test mode</b> → pick a region.</li>
-          <li>Project settings (gear) → scroll to <b>Your apps</b> → click Web <b>&lt;/&gt;</b> → register app.</li>
-          <li>Copy the four values above from the shown <b>firebaseConfig</b>.</li>
-          <li>Paste here → <b>Connect</b>. Then use “Copy snippet” and paste it into the file for permanent cross-device use, and re-upload.</li>
-        </ol>
-      </details>`;
-    UI.openModal('Cloud sync setup', body,
-      `<button class="btn ghost" onclick="UI.closeModal()">Cancel</button>
-       ${this.configured()?`<button class="btn ghost" onclick="CLOUD.copySnippet()"><span class="ic">📋</span> Copy snippet</button>
-       <button class="btn ghost" onclick="CLOUD.disconnect()">Disconnect</button>`:''}
-       <button class="btn primary" onclick="CLOUD.connect()"><span class="ic">☁️</span> Connect</button>`, true);
-  },
-
-  connect(){
-    const g=id=>{ const el=document.getElementById(id); return el?String(el.value).trim():''; };
-    const obj={ apiKey:g('cfApiKey'), authDomain:g('cfAuthDomain'), projectId:g('cfProjectId'), appId:g('cfAppId') };
-    if(!obj.apiKey||!obj.projectId){ TOAST.show('Missing values','apiKey and projectId are required.','err'); return; }
-    if(!obj.authDomain) obj.authDomain=obj.projectId+'.firebaseapp.com';
-    this.saveCfg(obj);
-    this.ready=false; this.status='connecting';
-    if(typeof UI!=='undefined') UI.closeModal();
-    TOAST.show('Connecting…','Contacting your Firebase project.','info');
-    this.init().then(ok=>{
-      if(!ok){ TOAST.show('Could not connect','Check the values and that Firestore is enabled.','err'); return; }
-      return this.pull().then(()=>{
-        if(typeof refreshChrome==='function') refreshChrome();
-        const cur=(typeof currentViewId==='function')?currentViewId():'dashboard';
-        if(STATE.user && typeof NAV!=='undefined') NAV.go(cur);
-        TOAST.show('Cloud connected','Accounts & cases now sync across devices.','ok');
-      });
-    });
-  },
-
-  disconnect(){
-    this.clearCfg();
-    if(typeof UI!=='undefined') UI.closeModal();
-    TOAST.show('Cloud disconnected','This device is back to local-only storage.','info');
-  },
-
-  copySnippet(){
-    const c=this.cfg(); if(!c){ return; }
-    const snippet='window.__ABC_CLOUD__ = '+JSON.stringify(c)+';';
-    const done=()=>TOAST.show('Snippet copied','Replace the window.__ABC_CLOUD__ line near the top of the HTML with this, then re-upload.','ok');
-    try{ if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(snippet).then(done, ()=>this._fallbackCopy(snippet,done)); } else this._fallbackCopy(snippet,done); }
-    catch(e){ this._fallbackCopy(snippet,done); }
-  },
-  _fallbackCopy(text,done){
-    if(typeof UI!=='undefined') UI.openModal('Copy this snippet',
-      `<div style="font-size:12.5px;color:var(--ink-2);margin-bottom:8px">Replace the <code>window.__ABC_CLOUD__ = null;</code> line near the top of the HTML file with the line below, then re-upload to your host:</div>
-       <textarea readonly style="width:100%;height:120px;font-family:monospace;font-size:11px;padding:10px;border:1px solid var(--line);border-radius:8px" onclick="this.select()">${esc(text)}</textarea>`,
-      `<button class="btn primary" onclick="UI.closeModal()">Done</button>`, true);
-    done&&done();
-  }
-};
-
 /* ---------- global state ---------- */
 const STATE = { user:null, users:[], cases:[], emails:[], openCaseId:null, mailFilter:'all' };
 
@@ -1380,7 +1031,7 @@ function toCr(rupees){ return (Number(rupees)||0)/1e7; }
 function bytes(n){ if(n==null)return''; if(n<1024)return n+' B'; if(n<1048576)return (n/1024).toFixed(0)+' KB'; return (n/1048576).toFixed(1)+' MB'; }
 
 /* Guarantee a case object has all the fields the app reads, so a single
-   malformed record (e.g. from an interrupted save, an import, or cloud merge)
+   malformed record (e.g. from an interrupted save or an import)
    can never crash the dashboards/analysis/reports. Returns the (repaired) case. */
 function normalizeCase(c){
   if(!c || typeof c!=='object') return null;
@@ -1409,7 +1060,7 @@ function normalizeCase(c){
 }
 function normalizeAllCases(){ if(!Array.isArray(STATE.cases)) { STATE.cases=[]; return; } STATE.cases = STATE.cases.map(normalizeCase).filter(Boolean); }
 
-function persistCases(){ DB.set(K.cases, STATE.cases); if(typeof CLOUD!=='undefined') CLOUD.onCasesChanged(); }
+function persistCases(){ DB.set(K.cases, STATE.cases); }
 function getCase(id){ return STATE.cases.find(c=>c.id===id); }
 
 /* ---------- learning memory (only for analysis‑relevant fields) ---------- */
@@ -1424,7 +1075,7 @@ const MEM = {
     if(!this._data) this.load();
     if(!this._data[bank]) this._data[bank]=[];
     const exists=this._data[bank].some(v=>v.toLowerCase()===value.toLowerCase());
-    if(!exists){ this._data[bank].unshift(value); if(this._data[bank].length>50) this._data[bank].length=50; DB.set(K.memory,this._data); if(typeof CLOUD!=='undefined') CLOUD.onMemoryChanged(); }
+    if(!exists){ this._data[bank].unshift(value); if(this._data[bank].length>50) this._data[bank].length=50; DB.set(K.memory,this._data); }
   }
 };
 
@@ -1457,44 +1108,17 @@ const UI = {
 };
 document.addEventListener('click',()=>document.querySelectorAll('.menu').forEach(m=>m.classList.remove('open')));
 
-/* ---------------- PROFILE (no login — the app opens straight into the workspace) ---------------- */
+/* ---------------- PROFILE (no login / sign-up — fixed default profile) ----------------
+   Neeraj, National Business Head: sees and can work every case, stage and pipeline. */
 const PROFILE = {
-  KEY:'los_profile',
-  ROLES:{RM:'Relationship Manager',BA:'Business Analyst',RA:'Risk Analyst',CC:'Credit Committee',Legal:'Legal',Ops:'Operations',Viewer:'Viewer'},
-  defaults(){ return { id:'local-user', name:'Guest User', email:'', role:'RM', zone:'' }; },
-  load(){
-    const p=DB.get(this.KEY,null);
-    return Object.assign(this.defaults(), (p&&typeof p==='object')?p:{});
-  },
-  save(p){ DB.set(this.KEY,p); STATE.user=p; this.paint(); },
+  ROLES:{NBH:'National Business Head',RM:'Relationship Manager',BA:'Business Analyst',RA:'Risk Analyst',CC:'Credit Committee',Legal:'Legal',Ops:'Operations',Viewer:'Viewer'},
+  load(){ return { id:'neeraj-nbh', name:'Neeraj', email:'', role:'NBH', designation:'National Business Head', zone:'', access:'all' }; },
   paint(){
     const u=STATE.user; if(!u) return;
     document.getElementById('userAvatar').textContent=initials(u.name);
     document.getElementById('userName').textContent=u.name;
-    document.getElementById('userRole').textContent=this.ROLES[u.role]||u.role||'';
-    document.getElementById('menuEmail').textContent=u.email||'No email set';
-  },
-  edit(){
-    const u=STATE.user||this.defaults();
-    const opt=(list,cur)=>list.map(([v,l])=>`<option value="${esc(v)}"${v===cur?' selected':''}>${esc(l)}</option>`).join('');
-    UI.openModal('Your name & role',
-      `<p style="font-size:13px;color:var(--ink-2);margin-bottom:14px">Used for “Sourced by”, case history and hand‑off emails. Saved on this device.</p>
-       <div class="field"><label>Full name</label><input id="pfName" value="${esc(u.name)}" placeholder="e.g. Aarav Sharma"></div>
-       <div class="field"><label>Email address (optional)</label><input id="pfEmail" type="email" value="${esc(u.email)}" placeholder="you@adityabirlacapital.com"></div>
-       <div class="row-2">
-         <div class="field"><label>Role / team</label><select id="pfRole">${opt(Object.entries(this.ROLES).map(([k,v])=>[k,k+' — '+v]),u.role)}</select></div>
-         <div class="field"><label>Zone</label><select id="pfZone">${opt([['','Not set'],['North','North'],['South','South'],['East','East'],['West','West'],['Central','Central']],u.zone)}</select></div>
-       </div>`,
-      `<button class="btn ghost" onclick="UI.closeModal()">Cancel</button>
-       <button class="btn primary" onclick="PROFILE.submit()">Save</button>`);
-  },
-  submit(){
-    const name=val('pfName').trim();
-    if(!name){ TOAST.show('Name needed','Enter your full name to save.','err'); return; }
-    const p=Object.assign({}, STATE.user||this.defaults(), { name, email:val('pfEmail').trim().toLowerCase(), role:val('pfRole'), zone:val('pfZone') });
-    this.save(p); UI.closeModal();
-    TOAST.show('Saved','Your name & role are updated.','ok');
-    if(typeof refreshChrome==='function') refreshChrome();
+    document.getElementById('userRole').textContent=u.designation||this.ROLES[u.role]||u.role||'';
+    document.getElementById('menuEmail').textContent='Access: all cases & pipelines';
   }
 };
 
@@ -1512,30 +1136,6 @@ const SAMPLE = {
   }
 };
 function val(id,set){ const el=document.getElementById(id); if(set!==undefined){el.value=set;return;} return el?el.value:''; }
-
-/* ---------------- PUBLIC WEBSITE (landing) — optional "About" page ---------------- */
-const SITE = {
-  home(){
-    const s=document.getElementById('siteScreen'); s.classList.add('show'); s.scrollTop=0;
-  },
-  enter(view){
-    document.getElementById('siteScreen').classList.remove('show');
-    document.getElementById('app').style.display='grid';
-    NAV.go(view||'dashboard');
-    window.scrollTo(0,0);
-  },
-  scrollTo(id){
-    const el=document.getElementById(id);
-    if(el) el.scrollIntoView({behavior:'smooth',block:'start'});
-  },
-  renderFlow(){
-    const el=document.getElementById('siteFlow'); if(!el) return;
-    el.innerHTML = STAGES.map(s=>`<div class="flow-step">
-      <div class="fs-no">${s.n}</div><div class="fs-ic">${s.icon}</div>
-      <h4>${esc(s.name)}</h4><div class="team">${esc(s.team)}</div>
-      <p>${esc(WF.stageBlurb(s.n))}</p></div>`).join('');
-  }
-};
 
 /* ---------------- NAVIGATION ---------------- */
 const VIEW_META = {
@@ -3815,18 +3415,6 @@ const APP = {
       APP._warnedStorage=true;
       TOAST.show('Session‑only mode','This preview can’t use browser storage, so cases won’t be saved after you close the tab. Download the file (or open the hosted page) for permanent saving.','info');
     }
-    /* CLOUD: after the local-first render, connect (if configured) and pull the
-       shared accounts + cases so this device shows the same data as every other. */
-    if(typeof CLOUD!=='undefined' && CLOUD.configured()){
-      const finish=()=>{
-        if(typeof refreshChrome==='function') refreshChrome();
-        const cur=(typeof currentViewId==='function')?currentViewId():'dashboard';
-        if(typeof NAV!=='undefined') NAV.go(cur);
-      };
-      const doPull=()=> CLOUD.pull().then(()=>{ APP.migrateCases(); finish(); TOAST.show('Cloud synced', STATE.cases.length+' case(s) loaded from your account.','ok'); });
-      if(CLOUD.ready){ doPull(); }
-      else { TOAST.show('Cloud connecting','Loading your cases from the cloud…','info'); CLOUD.init().then(okc=>{ if(okc) return doPull(); }).catch(e=>console.warn('cloud boot pull failed',e)); }
-    }
   },
 
   /* Repair cases created by older builds so amounts always display.
@@ -3857,20 +3445,20 @@ const APP = {
 };
 
 /* set logos everywhere */
-function applyLogos(){ ['brandLogo1','brandLogo2','siteLogo','siteLogoFoot'].forEach(id=>{ const el=document.getElementById(id); if(el) el.src=LOGO_URI; }); }
+function applyLogos(){ ['brandLogo2'].forEach(id=>{ const el=document.getElementById(id); if(el) el.src=LOGO_URI; }); }
 
 /* page init */
 (function init(){
   applyLogos();
   MEM.load();
-  SITE.renderFlow();
   STATE.users=DB.get(K.users,[]);
   STATE.cases=DB.get(K.cases,[]);
   STATE.emails=DB.get(K.emails,[]);
 
+  try{ localStorage.removeItem('los_cloud_cfg'); }catch(e){}
+
   /* no login — open straight into the workspace */
   STATE.user=PROFILE.load();
-  document.getElementById('siteScreen').classList.remove('show');
   document.getElementById('app').style.display='grid';
   APP.boot();
   const hr=new Date().getHours();
